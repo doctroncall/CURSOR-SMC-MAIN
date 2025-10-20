@@ -73,8 +73,16 @@ class MT5Connection:
     
     def _validate_credentials(self) -> bool:
         """Validate that all required credentials are provided"""
-        if not self.login or not self.password or not self.server:
-            self._last_error = "Missing MT5 credentials. Check configuration."
+        missing = []
+        if not self.login or self.login == 0:
+            missing.append("LOGIN")
+        if not self.password:
+            missing.append("PASSWORD")
+        if not self.server:
+            missing.append("SERVER")
+        
+        if missing:
+            self._last_error = f"Missing MT5 credentials: {', '.join(missing)}. Current values - Login: {self.login}, Server: {self.server}"
             return False
         return True
     

@@ -348,16 +348,52 @@ class HealthMonitor:
             else:
                 overall_status = HealthStatus.HEALTHY
             
-            # Generate summary
+            # Generate detailed summary with specific issues
             issues = []
+            
+            # System resource issues
             if system_health.get('status') != HealthStatus.HEALTHY.value:
-                issues.append(f"System resources: {system_health.get('status')}")
+                issue_details = []
+                if system_health.get('cpu', {}).get('status') != HealthStatus.HEALTHY.value:
+                    cpu_pct = system_health['cpu']['percent']
+                    issue_details.append(f"CPU: {cpu_pct:.1f}%")
+                if system_health.get('memory', {}).get('status') != HealthStatus.HEALTHY.value:
+                    mem_pct = system_health['memory']['percent']
+                    issue_details.append(f"Memory: {mem_pct:.1f}%")
+                if system_health.get('disk', {}).get('status') != HealthStatus.HEALTHY.value:
+                    disk_pct = system_health['disk']['percent']
+                    issue_details.append(f"Disk: {disk_pct:.1f}%")
+                if issue_details:
+                    issues.append(f"System resources ({system_health.get('status')}): {', '.join(issue_details)}")
+            
+            # MT5 connection issues
             if mt5_health.get('status') != HealthStatus.HEALTHY.value:
-                issues.append(f"MT5 connection: {mt5_health.get('status')}")
+                error_msg = mt5_health.get('message', mt5_health.get('error', 'Unknown error'))
+                connected = mt5_health.get('connected', False)
+                if not connected:
+                    issues.append(f"MT5 Connection (CRITICAL): Not connected - {error_msg}")
+                else:
+                    ping = mt5_health.get('ping_ms', 'N/A')
+                    issues.append(f"MT5 Connection ({mt5_health.get('status')}): High latency - {ping}ms")
+            
+            # Data pipeline issues  
             if pipeline_health.get('status') != HealthStatus.HEALTHY.value:
-                issues.append(f"Data pipeline: {pipeline_health.get('status')}")
+                error_msg = pipeline_health.get('error', '')
+                bars = pipeline_health.get('recent_data_bars', 0)
+                db_connected = pipeline_health.get('database_connected', False)
+                if not db_connected:
+                    issues.append(f"Data Pipeline (CRITICAL): Database not connected - {error_msg}")
+                else:
+                    issues.append(f"Data Pipeline ({pipeline_health.get('status')}): Low data freshness - {bars} bars in last 24h")
+            
+            # ML model issues
             if model_health.get('status') != HealthStatus.HEALTHY.value:
-                issues.append(f"ML model: {model_health.get('status')}")
+                model_loaded = model_health.get('model_loaded', False)
+                if not model_loaded:
+                    issues.append(f"ML Model (WARNING): No active model loaded")
+                else:
+                    accuracy = model_health.get('accuracy', 0) * 100
+                    issues.append(f"ML Model ({model_health.get('status')}): Low accuracy - {accuracy:.1f}%")
             
             result = {
                 'overall_status': overall_status.value,
@@ -379,12 +415,23 @@ class HealthMonitor:
             if len(self._check_history) > self._max_history:
                 self._check_history.pop(0)
             
-            # Log results
-            self.logger.log_health_check(
-                "Overall System",
-                overall_status.value,
-                {'issues': len(issues)}
-            )
+            # Log detailed results
+            if issues:
+                issues_str = " | ".join(issues)
+                self.logger.log_health_check(
+                    "Overall System",
+                    overall_status.value,
+                    {'issue_count': len(issues), 'details': issues_str}
+                )
+                # Also log each issue separately for easier tracking
+                for i, issue in enumerate(issues, 1):
+                    self.logger.warning(f"Health Issue {i}/{len(issues)}: {issue}", category="health")
+            else:
+                self.logger.log_health_check(
+                    "Overall System",
+                    overall_status.value,
+                    {'issue_count': 0, 'details': 'All systems healthy'}
+                )
             
             return result
             

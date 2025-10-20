@@ -121,9 +121,6 @@ def main():
     # Live metrics ticker at the top
     render_live_metrics_ticker()
     
-    # Live metrics ticker at the top
-    render_live_metrics_ticker()
-    
     # Initialize components
     components = initialize_components()
     
