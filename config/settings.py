@@ -25,11 +25,11 @@ for directory in [DATA_DIR, LOGS_DIR, MODELS_DIR, REPORTS_DIR]:
 class MT5Config:
     """MT5 Connection Configuration"""
     # Hardcoded dummy credentials for testing
-    LOGIN: int = int(os.getenv("MT5_LOGIN", "211744072"))
+    LOGIN: int = int(os.getenv("MT5_LOGIN", "211744072") or 211744072)
     PASSWORD: str = os.getenv("MT5_PASSWORD", "dFbKaNLWQ53@9@Z")
     SERVER: str = os.getenv("MT5_SERVER", "ExnessKE-MT5Trial9")
     TIMEOUT: int = int(os.getenv("MT5_TIMEOUT", "60000"))
-    PATH: Optional[str] = os.getenv("MT5_PATH", r"C:\Program Files\MetaTrader 5\terminal64.exe")
+    PATH: str = os.getenv("MT5_PATH", r"C:\Program Files\MetaTrader 5\terminal64.exe")
     PORTABLE: bool = os.getenv("MT5_PORTABLE", "False").lower() == "true"
 
 

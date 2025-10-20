@@ -25,6 +25,10 @@ from src.reporting.pdf_generator import PDFReportGenerator
 from gui.components.sentiment_card import render_sentiment_card, render_confidence_bar, render_factors_table
 from gui.components.chart_panel import render_price_chart, render_indicator_charts, render_smc_analysis, render_mtf_chart
 from gui.components.health_dashboard import render_health_dashboard, render_system_metrics, render_issues_list
+from gui.components.metrics_panel import (
+    render_metrics_panel, render_performance_chart, render_data_metrics,
+    render_model_metrics, render_live_metrics_ticker
+)
 from gui.components.settings_panel import (
     render_mt5_settings, render_analysis_settings, render_model_settings,
     render_alert_settings, render_display_settings, render_data_management
@@ -113,6 +117,9 @@ def main():
     
     # Header
     st.markdown('<h1 class="main-header">🎯 MT5 Sentiment Analysis Bot</h1>', unsafe_allow_html=True)
+    
+    # Live metrics ticker at the top
+    render_live_metrics_ticker()
     
     # Initialize components
     components = initialize_components()
