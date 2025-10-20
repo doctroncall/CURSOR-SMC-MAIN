@@ -1,0 +1,6 @@
+I would like to create a professional production grade python based streamlit GUI bot. this bot should use an mt5 login account  to collect data on a given symbol. this data is then used to give a sentiment either bullish bearish or flat. it should use indicators and cutting edge tried adn tested SMC concepts to analyze and come up with the sentiment. this bot should be able to run and update as the day proceeds. after 24h, it should recheck its sentiments and verify if tru/accurate or not. it should also be able to retrain itself on the data and improve as it goes/runs. reports should also be ddownloadable as pdf. 
+this bot should also have very detailed logs on every stage of its functions for debug. 
+a stunning gui dashboard that is intuitive and professional is key. 
+i would also like this bot to have a module that can check its overall health and troubleshoot any issues within
+lets discuss this and flesh it out. what more can we add to make it more accurate and reliable? 
+lets discuss this and create a wireframe before we proceed 
