@@ -33,6 +33,10 @@ from gui.components.settings_panel import (
     render_mt5_settings, render_analysis_settings, render_model_settings,
     render_alert_settings, render_display_settings, render_data_management
 )
+from gui.components.live_logs import (
+    render_live_logs, render_module_status, render_activity_feed,
+    render_debug_console, update_module_status, add_activity, log_to_console
+)
 
 # Initialize logging
 setup_logging()
@@ -171,13 +175,14 @@ def main():
             health_check_button = st.button("🏥 Health Check", use_container_width=True)
     
     # Main content tabs
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "📊 Analysis",
         "📈 Indicators",
         "📊 Metrics",
         "🧠 SMC",
         "🏥 Health",
-        "⚙️ Settings"
+        "⚙️ Settings",
+        "📋 Logs & Debug"
     ])
     
     # Initialize session state
@@ -192,44 +197,91 @@ def main():
         
         if analyze_button or (auto_refresh and st.session_state.analysis_results is None):
             try:
+                # Log to console and activity feed
+                log_to_console("=== Starting Analysis ===", "INFO")
+                add_activity("Analysis started", "🔍", "info")
+                
                 # MT5 Connection
+                update_module_status('mt5_connection', 'running', 'Connecting to MT5...')
+                log_to_console("Attempting MT5 connection...", "INFO")
+                
                 with st.spinner("Connecting to MT5..."):
                     connection = get_mt5_connection()
                     if not connection.is_connected():
+                        log_to_console("Not connected, attempting to connect...", "DEBUG")
                         connection.connect()
                     data_fetcher = MT5DataFetcher(connection)
+                    
+                update_module_status('mt5_connection', 'success', 'Connected successfully')
+                add_activity(f"Connected to MT5 - Account {connection.login}", "✅", "success")
+                log_to_console(f"MT5 connected successfully - Account: {connection.login}", "INFO")
                 
                 # Fetch data
+                update_module_status('data_fetcher', 'running', f'Fetching data for {symbol}...')
+                log_to_console(f"Fetching data for {symbol}", "INFO")
+                
                 if enable_mtf and mtf_timeframes:
                     all_timeframes = list(set([primary_tf] + mtf_timeframes))
+                    log_to_console(f"Multi-timeframe enabled: {', '.join(all_timeframes)}", "DEBUG")
                 else:
                     all_timeframes = [primary_tf]
+                    log_to_console(f"Single timeframe: {primary_tf}", "DEBUG")
                 
                 data_dict = get_mt5_data(symbol, all_timeframes, connection, data_fetcher)
                 
                 if not data_dict:
+                    update_module_status('data_fetcher', 'error', 'Failed to fetch data')
+                    add_activity("Data fetch failed", "❌", "error")
+                    log_to_console("Failed to fetch data from MT5", "ERROR")
                     st.error("Failed to fetch data. Please check MT5 connection.")
                     return
                 
+                bars_fetched = sum(len(df) for df in data_dict.values())
+                update_module_status('data_fetcher', 'success', f'Fetched {bars_fetched} bars')
+                add_activity(f"Fetched {bars_fetched} bars across {len(data_dict)} timeframe(s)", "📊", "success")
+                log_to_console(f"Data fetched successfully: {bars_fetched} total bars", "INFO")
+                
                 # Perform analysis
                 if enable_mtf and len(data_dict) > 1:
+                    log_to_console("Starting multi-timeframe analysis...", "INFO")
+                    update_module_status('sentiment_engine', 'running', 'Multi-timeframe analysis...')
+                    
                     with st.spinner("Performing multi-timeframe analysis..."):
                         results = components['mtf_analyzer'].analyze_multiple_timeframes(
                             data_dict, symbol
                         )
                         st.session_state.analysis_results = results
+                        
+                    update_module_status('sentiment_engine', 'success', 'MTF analysis complete')
+                    add_activity(f"Multi-timeframe analysis complete for {symbol}", "🎯", "success")
+                    log_to_console(f"MTF analysis completed for {len(data_dict)} timeframes", "INFO")
                 else:
+                    log_to_console(f"Starting sentiment analysis for {primary_tf}...", "INFO")
+                    update_module_status('sentiment_engine', 'running', f'Analyzing {primary_tf}...')
+                    
                     with st.spinner("Analyzing sentiment..."):
                         df = data_dict[primary_tf]
+                        log_to_console(f"Running technical indicators on {len(df)} bars...", "DEBUG")
+                        
                         results = components['sentiment_engine'].analyze_sentiment(
                             df, symbol, primary_tf
                         )
                         st.session_state.analysis_results = results
+                        
+                    sentiment = results.get('sentiment', 'NEUTRAL')
+                    confidence = results.get('confidence', 0) * 100
+                    update_module_status('sentiment_engine', 'success', f'Analysis complete: {sentiment}')
+                    add_activity(f"Sentiment: {sentiment} ({confidence:.0f}% confidence)", "🎯", "success")
+                    log_to_console(f"Analysis complete: {sentiment} with {confidence:.1f}% confidence", "INFO")
                 
                 st.success("✓ Analysis complete!")
+                log_to_console("=== Analysis Complete ===", "INFO")
                 
             except Exception as e:
                 logger.error(f"Error during analysis: {str(e)}", category="general")
+                update_module_status('sentiment_engine', 'error', f'Error: {str(e)[:50]}')
+                add_activity(f"Analysis failed: {str(e)[:50]}", "❌", "error")
+                log_to_console(f"ERROR: {str(e)}", "ERROR")
                 st.error(f"Analysis failed: {str(e)}")
                 return
         
@@ -405,25 +457,83 @@ def main():
     
     # Settings Tab
     with tab6:
-        st.header("Configuration")
+        st.header("⚙️ Configuration")
+        
+        st.info("💡 **Configuration Settings:** Adjust bot parameters and preferences below.")
         
         settings_tab1, settings_tab2, settings_tab3, settings_tab4 = st.tabs([
-            "MT5", "Analysis", "Alerts", "Data"
+            "🔌 MT5 Connection", "📊 Analysis", "🔔 Alerts", "💾 Data"
         ])
         
         with settings_tab1:
+            st.markdown("### MT5 Connection Settings")
+            st.markdown("---")
             render_mt5_settings()
         
         with settings_tab2:
+            st.markdown("### Analysis Configuration")
+            st.markdown("---")
             render_analysis_settings()
+            st.markdown("---")
+            st.markdown("### ML Model Settings")
             render_model_settings()
         
         with settings_tab3:
+            st.markdown("### Alert Configuration")
+            st.markdown("---")
             render_alert_settings()
         
         with settings_tab4:
+            st.markdown("### Display Settings")
             render_display_settings()
+            st.markdown("---")
+            st.markdown("### Data Management")
             render_data_management()
+    
+    # Logs & Debug Tab
+    with tab7:
+        st.header("📋 Logs & Debug Console")
+        
+        debug_tab1, debug_tab2, debug_tab3, debug_tab4 = st.tabs([
+            "📋 Live Logs", "🔧 Module Status", "📡 Activity Feed", "🐛 Debug Console"
+        ])
+        
+        with debug_tab1:
+            render_live_logs(max_lines=100, auto_refresh=False, refresh_interval=5)
+        
+        with debug_tab2:
+            render_module_status()
+            
+            if st.button("🔄 Refresh Module Status"):
+                st.rerun()
+        
+        with debug_tab3:
+            render_activity_feed()
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🔄 Refresh Activity"):
+                    st.rerun()
+            with col2:
+                if st.button("🗑️ Clear Activity"):
+                    st.session_state.activity_feed = []
+                    st.success("Activity feed cleared!")
+        
+        with debug_tab4:
+            render_debug_console()
+            
+            # Add test messages
+            st.markdown("---")
+            st.markdown("**Test Console:**")
+            test_col1, test_col2 = st.columns(2)
+            with test_col1:
+                if st.button("📝 Add Test Log"):
+                    log_to_console("Test log message", "INFO")
+                    st.success("Test log added!")
+            with test_col2:
+                if st.button("⚠️ Add Test Warning"):
+                    log_to_console("Test warning message", "WARNING")
+                    st.warning("Test warning added!")
     
     # Footer
     st.divider()
