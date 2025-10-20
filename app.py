@@ -121,6 +121,9 @@ def main():
     # Live metrics ticker at the top
     render_live_metrics_ticker()
     
+    # Live metrics ticker at the top
+    render_live_metrics_ticker()
+    
     # Initialize components
     components = initialize_components()
     
@@ -171,9 +174,10 @@ def main():
             health_check_button = st.button("🏥 Health Check", use_container_width=True)
     
     # Main content tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📊 Analysis",
         "📈 Indicators",
+        "📊 Metrics",
         "🧠 SMC",
         "🏥 Health",
         "⚙️ Settings"
@@ -316,8 +320,45 @@ def main():
         else:
             st.info("Run analysis first to see indicators")
     
-    # SMC Tab
+    # Metrics Tab
     with tab3:
+        st.header("📊 Performance Metrics")
+        
+        # Store last update time in session state
+        if 'last_update' not in st.session_state:
+            st.session_state.last_update = datetime.now()
+        
+        # Update timestamp after analysis
+        if analyze_button:
+            st.session_state.last_update = datetime.now()
+        
+        # Main metrics panel
+        render_metrics_panel(
+            repository=components['repository'],
+            last_update=st.session_state.last_update,
+            update_frequency=DataConfig.UPDATE_FREQUENCY,
+            symbol=symbol,
+            timeframe=primary_tf
+        )
+        
+        st.markdown("---")
+        
+        # Performance charts
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            render_performance_chart(components['repository'])
+        
+        with col2:
+            render_model_metrics(components['repository'])
+        
+        st.markdown("---")
+        
+        # Data metrics
+        render_data_metrics(components['repository'], symbol, primary_tf)
+    
+    # SMC Tab
+    with tab4:
         st.header("Smart Money Concepts")
         
         if st.session_state.analysis_results:
@@ -337,7 +378,7 @@ def main():
             st.info("Run analysis first to see SMC analysis")
     
     # Health Tab
-    with tab4:
+    with tab5:
         st.header("System Health")
         
         if health_check_button or st.session_state.health_results is None:
@@ -366,7 +407,7 @@ def main():
             st.info("👆 Click 'Health Check' to view system status")
     
     # Settings Tab
-    with tab5:
+    with tab6:
         st.header("Configuration")
         
         settings_tab1, settings_tab2, settings_tab3, settings_tab4 = st.tabs([
