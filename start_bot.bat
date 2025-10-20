@@ -48,13 +48,13 @@ echo.
 
 REM Check if dependencies are installed
 echo [SETUP] Checking dependencies...
-python -c "import streamlit" >nul 2>&1
+pip show streamlit >nul 2>&1
 if errorlevel 1 (
-    echo [SETUP] Installing dependencies (this may take a few minutes)...
+    echo [SETUP] Installing dependencies this may take a few minutes...
     echo.
     
     REM Check if TA-Lib is installed
-    python -c "import talib" >nul 2>&1
+    pip show TA-Lib >nul 2>&1
     if errorlevel 1 (
         echo.
         echo ========================================
@@ -65,13 +65,14 @@ if errorlevel 1 (
         echo Please follow these steps:
         echo 1. Download TA-Lib wheel from:
         echo    https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib
-        echo 2. Install with: pip install [downloaded-wheel-file]
+        echo 2. Install with: pip install downloaded-wheel-file.whl
         echo 3. Run this script again
         echo.
         pause
         exit /b 1
     )
     
+    echo Installing Python packages...
     pip install -r requirements.txt
     if errorlevel 1 (
         echo [ERROR] Failed to install dependencies
@@ -116,12 +117,15 @@ if not exist ".env" (
 echo [OK] Configuration file found
 echo.
 
+REM Create data directory if it doesn't exist
+if not exist "data" mkdir data
+
 REM Check if database needs initialization
 if not exist "data\mt5_sentiment.db" (
     echo [SETUP] Initializing database...
-    python -c "from src.database.models import init_database; init_database(); print('[OK] Database initialized')"
+    python -c "from src.database.models import init_database; init_database(); print('[OK] Database initialized')" 2>nul
     if errorlevel 1 (
-        echo [WARNING] Database initialization failed (will retry on first run)
+        echo [WARNING] Database initialization failed will retry on first run
     )
 )
 
