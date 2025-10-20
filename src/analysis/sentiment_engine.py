@@ -3,7 +3,7 @@ Sentiment Engine
 Aggregates technical indicators and SMC analysis to generate market sentiment
 """
 import pandas as pd
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 from enum import Enum
 
