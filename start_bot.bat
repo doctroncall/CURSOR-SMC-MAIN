@@ -53,33 +53,51 @@ if errorlevel 1 (
     echo [SETUP] Installing dependencies this may take a few minutes...
     echo.
     
-    REM Check if TA-Lib is installed
-    pip show TA-Lib >nul 2>&1
+    REM Try to install TA-Lib first
+    echo [SETUP] Attempting to install TA-Lib...
+    pip install Ta-lib >nul 2>&1
     if errorlevel 1 (
-        echo.
-        echo ========================================
-        echo WARNING: TA-Lib not detected
-        echo ========================================
-        echo TA-Lib must be installed manually before proceeding.
-        echo.
-        echo Please follow these steps:
-        echo 1. Download TA-Lib wheel from:
-        echo    https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib
-        echo 2. Install with: pip install downloaded-wheel-file.whl
-        echo 3. Run this script again
-        echo.
-        pause
-        exit /b 1
+        echo [WARNING] TA-Lib pip install failed, trying alternative...
+        pip install TA-Lib >nul 2>&1
     )
     
-    echo Installing Python packages...
+    REM Check if TA-Lib is now installed
+    pip show Ta-lib >nul 2>&1
+    if errorlevel 1 (
+        pip show TA-Lib >nul 2>&1
+        if errorlevel 1 (
+            echo.
+            echo ========================================
+            echo WARNING: TA-Lib installation failed
+            echo ========================================
+            echo TA-Lib is required but could not be installed automatically.
+            echo.
+            echo Please try ONE of these options:
+            echo.
+            echo OPTION 1 - Try manual install:
+            echo   pip install Ta-lib
+            echo.
+            echo OPTION 2 - Download wheel file:
+            echo   1. Go to: https://github.com/cgohlke/talib-build/releases
+            echo   2. Download the .whl file for Python 3.13
+            echo   3. Run: pip install path\to\downloaded-file.whl
+            echo.
+            echo After installation, run this script again.
+            echo.
+            pause
+            exit /b 1
+        )
+    )
+    echo [OK] TA-Lib installed
+    
+    echo [SETUP] Installing remaining Python packages...
     pip install -r requirements.txt
     if errorlevel 1 (
         echo [ERROR] Failed to install dependencies
         pause
         exit /b 1
     )
-    echo [OK] Dependencies installed
+    echo [OK] All dependencies installed
 ) else (
     echo [OK] Dependencies already installed
 )
