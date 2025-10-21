@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config.settings import AppConfig, DataConfig
-from src.mt5.connection import MT5Connection, get_mt5_connection
+# REMOVED: Old MT5Connection import - now using mt5_connector.py via GUI components
 from src.mt5.data_fetcher import MT5DataFetcher
 from src.analysis.sentiment_engine import SentimentEngine
 from src.analysis.multi_timeframe import MultiTimeframeAnalyzer

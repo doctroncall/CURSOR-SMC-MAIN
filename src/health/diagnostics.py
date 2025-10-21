@@ -70,8 +70,8 @@ class SystemDiagnostics:
         
         # Test 2: Connection
         try:
-            from src.mt5.connection import MT5Connection
-            conn = MT5Connection()
+            from mt5_connector import get_connector
+            conn = get_connector()
             tests.append({'name': 'MT5 Connection Class', 'passed': True})
         except Exception as e:
             tests.append({'name': 'MT5 Connection Class', 'passed': False, 'error': str(e)})

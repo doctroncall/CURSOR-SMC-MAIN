@@ -17,7 +17,9 @@ MT5_TIMEOUT = int(os.getenv("MT5_TIMEOUT", "60000"))
 
 
 class MT5Connector:
-    """Simple MT5 connection manager"""
+    """Simple MT5 connection manager with singleton protection"""
+    
+    _initialization_lock = False  # Prevent concurrent initialization
     
     def __init__(self):
         self.login = MT5_LOGIN
@@ -89,8 +91,53 @@ class MT5Connector:
         # Step 3: Initialize MT5
         print(f"\n[3/4] Initializing MT5 terminal...")
         
-        # Try with path first
-        if self.path and Path(self.path).exists():
+        # Check if already being initialized (prevent conflicts)
+        if MT5Connector._initialization_lock:
+            msg = "❌ Another connection attempt is in progress. Please wait."
+            print(f"   {msg}")
+            self.last_error = msg
+            return False, msg
+        
+        # Check if MT5 is already initialized by another instance
+        try:
+            terminal_info = mt5.terminal_info()
+            if terminal_info is not None:
+                print(f"   ⚠️  MT5 already initialized (possibly by another instance)")
+                print(f"   Attempting to use existing connection...")
+                # Try to login with existing connection
+                print(f"\n[4/4] Logging in to {self.server}...")
+                login_success = mt5.login(self.login, password=self.password, server=self.server)
+                
+                if login_success:
+                    account = mt5.account_info()
+                    if account:
+                        self.connected = True
+                        self.connection_time = datetime.now()
+                        self.last_error = None
+                        print(f"   ✓ Login successful!")
+                        print(f"\n" + "="*60)
+                        print("CONNECTION SUCCESSFUL")
+                        print("="*60)
+                        print(f"Account: {account.login}")
+                        print(f"Server: {account.server}")
+                        print(f"Name: {account.name}")
+                        print(f"Balance: {account.balance} {account.currency}")
+                        print(f"Leverage: 1:{account.leverage}")
+                        print(f"Company: {account.company}")
+                        print("="*60 + "\n")
+                        return True, f"Connected as {account.login} on {account.server}"
+                else:
+                    print(f"   ⚠️  Existing connection found but login failed, will reinitialize...")
+                    mt5.shutdown()
+        except:
+            pass  # Not initialized yet, continue normally
+        
+        # Set lock
+        MT5Connector._initialization_lock = True
+        
+        try:
+            # Try with path first
+            if self.path and Path(self.path).exists():
             print(f"   Trying path: {self.path}")
             success = mt5.initialize(
                 path=self.path,
@@ -124,6 +171,9 @@ class MT5Connector:
             if not found:
                 print(f"   No MT5 found in common locations, trying default...")
                 success = mt5.initialize()
+        finally:
+            # Release lock
+            MT5Connector._initialization_lock = False
         
         if not success:
             error = mt5.last_error()
@@ -137,6 +187,16 @@ class MT5Connector:
                 print(f"   💡 MT5 not installed or wrong path")
             elif error_code == 5:
                 print(f"   💡 Old MT5 version - please update")
+            elif error_code == -6:
+                print(f"   💡 Authorization failed - MT5 terminal might be blocking API access")
+                print(f"   💡 Solutions:")
+                print(f"      1. Open MT5 terminal manually")
+                print(f"      2. Go to Tools → Options → Expert Advisors")
+                print(f"      3. Enable: ☑ Allow automated trading")
+                print(f"      4. Enable: ☑ Allow DLL imports")
+                print(f"      5. Check that AutoTrading button is enabled (green) in toolbar")
+                print(f"      6. Close any other programs trying to connect to MT5")
+                print(f"      7. Restart MT5 as Administrator if needed")
             
             self.last_error = msg
             return False, msg
