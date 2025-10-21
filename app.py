@@ -596,9 +596,3 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Application error: {str(e)}", category="general")
         st.error(f"Application error: {str(e)}")
-me__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        logger.error(f"Application error: {str(e)}", category="general")
-        st.error(f"Application error: {str(e)}")
