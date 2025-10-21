@@ -231,8 +231,8 @@ def main():
                     data_fetcher = MT5DataFetcher(connection=None)
                     
                 update_module_status('mt5_connection', 'success', 'Connected successfully')
-                add_activity(f"Connected to MT5 - Account {connection.login}", "✅", "success")
-                log_to_console(f"MT5 connected successfully - Account: {connection.login}", "INFO")
+                add_activity(f"Connected to MT5 - Account {connector.login}", "✅", "success")
+                log_to_console(f"MT5 connected successfully - Account: {connector.login}", "INFO")
                 
                 # Fetch data
                 update_module_status('data_fetcher', 'running', f'Fetching data for {symbol}...')
