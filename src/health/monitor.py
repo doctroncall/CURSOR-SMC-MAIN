@@ -130,20 +130,20 @@ class HealthMonitor:
                 'error': str(e)
             }
     
-    def check_mt5_connection(self, connection=None) -> Dict[str, Any]:
+    def check_mt5_connection(self, connector=None) -> Dict[str, Any]:
         """
         Check MT5 connection health
         
         Args:
-            connection: MT5Connection instance (optional)
+            connector: MT5Connector instance from mt5_connector.py (optional)
             
         Returns:
             Dict with connection health
         """
         try:
-            if connection is None:
-                from src.mt5.connection import get_mt5_connection
-                connection = get_mt5_connection()
+            if connector is None:
+                from mt5_connector import get_connector
+                connector = get_connector()
             
             # Get connection status
             is_connected = connection.is_connected()
@@ -156,34 +156,50 @@ class HealthMonitor:
                     'timestamp': datetime.now()
                 }
             
-            # Get ping
-            ping = connection.ping()
-            
-            # Assess ping
-            if ping is None:
-                ping_status = HealthStatus.CRITICAL
-            elif ping > 1000:
-                ping_status = HealthStatus.CRITICAL
-            elif ping > 500:
-                ping_status = HealthStatus.WARNING
-            else:
-                ping_status = HealthStatus.HEALTHY
-            
-            # Get account info
-            account_info = connection.get_account_info()
-            
-            return {
-                'status': ping_status.value,
-                'connected': True,
-                'ping_ms': ping,
-                'account': {
-                    'login': account_info.get('login') if account_info else None,
-                    'server': account_info.get('server') if account_info else None,
-                    'balance': account_info.get('balance') if account_info else None,
-                },
-                'uptime': connection.stats.get('uptime_start'),
-                'timestamp': datetime.now()
-            }
+            # Test connection quality with MT5 API
+            try:
+                import MetaTrader5 as mt5
+                start = time.time()
+                account_info = mt5.account_info()
+                ping_ms = (time.time() - start) * 1000
+                
+                if account_info:
+                    # Assess ping
+                    if ping_ms > 1000:
+                        ping_status = HealthStatus.CRITICAL
+                    elif ping_ms > 500:
+                        ping_status = HealthStatus.WARNING
+                    else:
+                        ping_status = HealthStatus.HEALTHY
+                    
+                    return {
+                        'status': ping_status.value,
+                        'connected': True,
+                        'ping_ms': round(ping_ms, 2),
+                        'account': {
+                            'login': account_info.login,
+                            'server': connector.server,
+                            'balance': account_info.balance,
+                        },
+                        'timestamp': datetime.now()
+                    }
+                else:
+                    self.logger.warning("Health Check: MT5 Connection (WARNING): Connected but no account info", category="health")
+                    return {
+                        'status': HealthStatus.WARNING.value,
+                        'connected': True,
+                        'ping_ms': round(ping_ms, 2),
+                        'message': 'Connected but account info unavailable',
+                        'timestamp': datetime.now()
+                    }
+            except Exception as ping_err:
+                self.logger.error(f"Health Check: MT5 ping test failed: {str(ping_err)}", category="health")
+                return {
+                    'status': HealthStatus.WARNING.value,
+                    'connected': True,
+                    'message': f'Connected but ping test failed: {str(ping_err)}',
+                    'timestamp': datetime.now()
+                }
             
         except Exception as e:
             self.logger.error(f"Error checking MT5 connection: {str(e)}", category="health")
