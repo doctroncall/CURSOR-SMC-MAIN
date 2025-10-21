@@ -89,7 +89,6 @@ class MT5DataFetcher:
             "total_ticks_fetched": 0,
         }
     
-    @ensure_connection
     def get_symbol_info(self, symbol: str) -> Optional[Dict[str, Any]]:
         """
         Get symbol information
@@ -158,7 +157,6 @@ class MT5DataFetcher:
             print(f"Error getting tick for {symbol}: {str(e)}")
             return None
     
-    @ensure_connection
     def get_ohlcv(
         self,
         symbol: str,
@@ -244,7 +242,6 @@ class MT5DataFetcher:
             print(f"Error fetching OHLCV for {symbol} {timeframe}: {str(e)}")
             return None
     
-    @ensure_connection
     def get_ticks(
         self,
         symbol: str,

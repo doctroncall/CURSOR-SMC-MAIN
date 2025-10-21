@@ -220,10 +220,11 @@ def main():
                     log_to_console("MT5 not connected - user must connect manually", "ERROR")
                     return
                 
-                with st.spinner("Using MT5 connection..."):
-                    # Use old connection for data fetcher compatibility
-                    connection = get_mt5_connection()
-                    data_fetcher = MT5DataFetcher(connection)
+                log_to_console(f"MT5 connected: {connector.login} @ {connector.server}", "INFO")
+                
+                with st.spinner("Fetching data from MT5..."):
+                    # Create data fetcher without old connection (uses direct MT5 API)
+                    data_fetcher = MT5DataFetcher(connection=None)
                     
                 update_module_status('mt5_connection', 'success', 'Connected successfully')
                 add_activity(f"Connected to MT5 - Account {connection.login}", "✅", "success")
