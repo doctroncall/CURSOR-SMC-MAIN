@@ -146,7 +146,7 @@ class HealthMonitor:
                 connector = get_connector()
             
             # Get connection status
-            is_connected = connection.is_connected()
+            is_connected = connector.is_connected()
             
             if not is_connected:
                 return {
