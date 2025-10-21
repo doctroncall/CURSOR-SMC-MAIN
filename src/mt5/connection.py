@@ -99,7 +99,9 @@ class MT5Connection:
         Raises:
             MT5ConnectionError: If connection fails after retries
         """
+        # Validate credentials first
         if not self._validate_credentials():
+            print(f"❌ Credential validation failed: {self._last_error}")
             raise MT5ConnectionError(self._last_error)
         
         for attempt in range(1, self._max_attempts + 1 if retry else 2):
