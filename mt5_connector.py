@@ -29,6 +29,12 @@ class MT5Connector:
         self.last_error = None
         self.connection_time = None
         
+        # Debug logging
+        print(f"[DEBUG] MT5Connector.__init__() - Created new connector instance")
+        print(f"[DEBUG]   Login: {self.login}")
+        print(f"[DEBUG]   Server: {self.server}")
+        print(f"[DEBUG]   Path: {self.path}")
+        
     def connect(self) -> tuple[bool, str]:
         """
         Connect to MT5

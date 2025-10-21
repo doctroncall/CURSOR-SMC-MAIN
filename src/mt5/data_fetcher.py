@@ -77,8 +77,23 @@ class MT5DataFetcher:
         Args:
             connection: MT5Connection instance (optional, uses global MT5 if None)
         """
+        print(f"[DEBUG] MT5DataFetcher.__init__() called")
+        print(f"[DEBUG]   connection parameter = {connection}")
+        print(f"[DEBUG]   Will use: {'Old MT5Connection object' if connection else 'Global MT5 API'}")
+        
         self.connection = connection  # None means use global MT5 API
         self.validator = DataValidator()
+        
+        # Check if MT5 is initialized
+        if connection is None:
+            terminal_info = mt5.terminal_info()
+            print(f"[DEBUG]   Global MT5 terminal_info = {terminal_info}")
+            if terminal_info:
+                print(f"[DEBUG]   ✓ MT5 globally initialized")
+                print(f"[DEBUG]   Terminal: {terminal_info.name}")
+                print(f"[DEBUG]   Company: {terminal_info.company}")
+            else:
+                print(f"[DEBUG]   ✗ MT5 NOT globally initialized!")
         
         # Statistics
         self.stats = {
