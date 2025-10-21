@@ -107,54 +107,59 @@ class MT5Connector:
             self.last_error = msg
             return False, msg
         
-        # Check if MT5 is already initialized by another instance
+        # Check if MT5 is already initialized and connected to the correct account
         try:
             terminal_info = mt5.terminal_info()
             if terminal_info is not None:
-                print(f"   ⚠️  MT5 already initialized (possibly by another instance)")
-                print(f"   Attempting to use existing connection...")
-                # Try to login with existing connection
-                print(f"\n[4/4] Logging in to {self.server}...")
-                login_success = mt5.login(self.login, password=self.password, server=self.server)
+                # MT5 is already initialized, check if it's connected to the right account
+                account_info = mt5.account_info()
                 
-                if login_success:
-                    account = mt5.account_info()
-                    if account:
-                        self.connected = True
-                        self.connection_time = datetime.now()
-                        self.last_error = None
-                        print(f"   ✓ Login successful!")
-                        print(f"\n" + "="*60)
-                        print("CONNECTION SUCCESSFUL")
-                        print("="*60)
-                        print(f"Account: {account.login}")
-                        print(f"Server: {account.server}")
-                        print(f"Name: {account.name}")
-                        print(f"Balance: {account.balance} {account.currency}")
-                        print(f"Leverage: 1:{account.leverage}")
-                        print(f"Company: {account.company}")
-                        print("="*60 + "\n")
-                        return True, f"Connected as {account.login} on {account.server}"
-                else:
-                    print(f"   ⚠️  Existing connection found but login failed, will reinitialize...")
-                    mt5.shutdown()
-        except:
-            pass  # Not initialized yet, continue normally
+                if account_info and account_info.login == self.login and account_info.server == self.server:
+                    # Already connected to the correct account!
+                    print(f"   ✓ MT5 already connected to correct account")
+                    self.connected = True
+                    self.connection_time = datetime.now()
+                    self.last_error = None
+                    print(f"\n" + "="*60)
+                    print("CONNECTION SUCCESSFUL (EXISTING)")
+                    print("="*60)
+                    print(f"Account: {account_info.login}")
+                    print(f"Server: {account_info.server}")
+                    print(f"Name: {account_info.name}")
+                    print(f"Balance: {account_info.balance} {account_info.currency}")
+                    print(f"Leverage: 1:{account_info.leverage}")
+                    print(f"Company: {account_info.company}")
+                    print("="*60 + "\n")
+                    return True, f"Connected as {account_info.login} on {account_info.server}"
+                
+                # MT5 is initialized but with wrong account or not logged in
+                print(f"   ⚠️  MT5 is running but connected to different account or disconnected")
+                print(f"      Current: {account_info.login if account_info else 'None'} @ {account_info.server if account_info else 'None'}")
+                print(f"      Target: {self.login} @ {self.server}")
+                print(f"   Shutting down existing connection to reconnect...")
+                mt5.shutdown()
+                # Wait a moment for clean shutdown
+                import time
+                time.sleep(1)
+        except Exception as e:
+            print(f"   ⚠️  Error checking existing connection: {e}")
+            # Try to shutdown anyway to be safe
+            try:
+                mt5.shutdown()
+                import time
+                time.sleep(1)
+            except:
+                pass
         
         # Set lock
         MT5Connector._initialization_lock = True
         
         try:
-            # Try with path first
+            # Initialize MT5 WITHOUT login credentials first
+            # This prevents disconnecting an already-running MT5 terminal
             if self.path and Path(self.path).exists():
                 print(f"   Trying path: {self.path}")
-                success = mt5.initialize(
-                    path=self.path,
-                    login=self.login,
-                    password=self.password,
-                    server=self.server,
-                    timeout=self.timeout
-                )
+                success = mt5.initialize(path=self.path, timeout=self.timeout)
             else:
                 # Try common paths
                 print(f"   Configured path not found, searching...")
@@ -167,13 +172,7 @@ class MT5Connector:
                 for path in common_paths:
                     if Path(path).exists():
                         print(f"   Found MT5 at: {path}")
-                        success = mt5.initialize(
-                            path=path,
-                            login=self.login,
-                            password=self.password,
-                            server=self.server,
-                            timeout=self.timeout
-                        )
+                        success = mt5.initialize(path=path, timeout=self.timeout)
                         found = True
                         break
                 

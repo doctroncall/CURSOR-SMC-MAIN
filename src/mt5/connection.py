@@ -108,13 +108,10 @@ class MT5Connection:
             try:
                 self._connection_attempts = attempt
                 
-                # Initialize MT5
+                # Initialize MT5 WITHOUT credentials first (prevents disconnecting existing connection)
                 if self.path:
                     if not mt5.initialize(
                         path=self.path,
-                        login=self.login,
-                        password=self.password,
-                        server=self.server,
                         timeout=self.timeout,
                         portable=self.portable
                     ):
@@ -123,7 +120,7 @@ class MT5Connection:
                     if not mt5.initialize():
                         raise MT5ConnectionError(f"MT5 initialization failed: {mt5.last_error()}")
                 
-                # Login
+                # Then login as separate step
                 if not mt5.login(self.login, self.password, self.server):
                     raise MT5ConnectionError(f"MT5 login failed: {mt5.last_error()}")
                 
