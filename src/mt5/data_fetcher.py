@@ -195,13 +195,25 @@ class MT5DataFetcher:
         Returns:
             Optional[pd.DataFrame]: OHLCV data or None if failed
         """
+        print(f"[DEBUG] get_ohlcv() START - Symbol: {symbol}, TF: {timeframe}, Count: {count}")
         self.stats["total_requests"] += 1
         
         try:
+            # Check MT5 connection first
+            terminal_info = mt5.terminal_info()
+            print(f"[DEBUG]   MT5 terminal_info: {terminal_info is not None}")
+            if not terminal_info:
+                print(f"[DEBUG]   ✗ MT5 NOT CONNECTED - Error: {mt5.last_error()}")
+                self.stats["failed_requests"] += 1
+                return None
+            
             # Convert timeframe string to MT5 constant
+            print(f"[DEBUG]   Converting timeframe: {timeframe}")
             tf = Timeframe.from_string(timeframe)
+            print(f"[DEBUG]   ✓ Timeframe value: {tf.value}")
             
             # Get data
+            print(f"[DEBUG]   Calling mt5.copy_rates_from_pos({symbol}, {tf.value}, 0, {count})")
             if start_date and end_date:
                 rates = mt5.copy_rates_range(symbol, tf.value, start_date, end_date)
             elif start_date:
@@ -209,9 +221,15 @@ class MT5DataFetcher:
             else:
                 rates = mt5.copy_rates_from_pos(symbol, tf.value, 0, count)
             
+            print(f"[DEBUG]   Result type: {type(rates)}, Length: {len(rates) if rates is not None else 0}")
+            
             if rates is None or len(rates) == 0:
+                error = mt5.last_error()
+                print(f"[DEBUG]   ✗ FETCH FAILED - MT5 Error: {error}")
                 self.stats["failed_requests"] += 1
                 return None
+            
+            print(f"[DEBUG]   ✓ Successfully fetched {len(rates)} rates")
             
             # Convert to DataFrame
             df = pd.DataFrame(rates)
