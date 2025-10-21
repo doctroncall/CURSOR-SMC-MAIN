@@ -72,6 +72,14 @@ class MLConfig:
     RANDOM_STATE: int = 42
     CV_FOLDS: int = 5
     
+    # NEW: Improved target definition
+    MIN_MOVE_PIPS: float = float(os.getenv("MIN_MOVE_PIPS", "10.0"))  # Minimum meaningful move
+    LOOKFORWARD_BARS: int = int(os.getenv("LOOKFORWARD_BARS", "3"))  # Multi-horizon target
+    
+    # NEW: Class balancing
+    USE_CLASS_BALANCING: bool = os.getenv("USE_CLASS_BALANCING", "True").lower() == "true"
+    USE_TSCV: bool = os.getenv("USE_TSCV", "True").lower() == "true"  # Time-series CV
+    
     # Model ensemble weights
     XGBOOST_WEIGHT: float = 0.4
     RANDOM_FOREST_WEIGHT: float = 0.3

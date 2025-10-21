@@ -6,10 +6,13 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any, List
 from datetime import datetime
+import warnings
 
 from src.indicators.technical import TechnicalIndicators
 from src.indicators.smc import SMCAnalyzer
 from src.utils.logger import get_logger
+
+warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 logger = get_logger()
 
@@ -61,6 +64,12 @@ class FeatureEngineer:
             
             # SMC features
             features_df = self._add_smc_features(features_df)
+            
+            # NEW: Advanced features
+            features_df = self._add_candlestick_patterns(features_df)
+            features_df = self._add_feature_interactions(features_df)
+            features_df = self._add_market_regime_features(features_df)
+            features_df = self._add_lagged_features(features_df)
             
             # Drop NaN values
             features_df = features_df.dropna()
@@ -159,14 +168,145 @@ class FeatureEngineer:
             # Trend strength
             df['trend_strength'] = (df['Close'] - df['Close'].shift(20)) / df['Close'].shift(20)
             
+            # Higher highs / lower lows detection
+            df['higher_high'] = ((df['High'] > df['High'].shift(1)) & 
+                                (df['High'].shift(1) > df['High'].shift(2))).astype(int)
+            df['lower_low'] = ((df['Low'] < df['Low'].shift(1)) & 
+                              (df['Low'].shift(1) < df['Low'].shift(2))).astype(int)
+            
+            # Market structure score (simple version)
+            df['structure_score'] = df['higher_high'].rolling(10).sum() - df['lower_low'].rolling(10).sum()
+            
         except Exception as e:
             self.logger.warning(f"Error adding SMC features: {str(e)}", category="ml_training")
         
         return df
     
+    def _add_candlestick_patterns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add candlestick pattern features"""
+        try:
+            # Body and wick sizes
+            body = abs(df['Close'] - df['Open'])
+            upper_wick = df['High'] - df[['Open', 'Close']].max(axis=1)
+            lower_wick = df[['Open', 'Close']].min(axis=1) - df['Low']
+            candle_range = df['High'] - df['Low']
+            
+            # Doji (small body, long wicks)
+            df['is_doji'] = ((body / candle_range) < 0.1).astype(int)
+            
+            # Hammer / Hanging Man (small upper wick, long lower wick, small body)
+            df['is_hammer'] = ((lower_wick > 2 * body) & 
+                              (upper_wick < body) & 
+                              (body / candle_range < 0.3)).astype(int)
+            
+            # Shooting Star / Inverted Hammer
+            df['is_shooting_star'] = ((upper_wick > 2 * body) & 
+                                     (lower_wick < body) & 
+                                     (body / candle_range < 0.3)).astype(int)
+            
+            # Engulfing patterns
+            bullish_engulf = ((df['Close'] > df['Open']) & 
+                             (df['Close'].shift(1) < df['Open'].shift(1)) &
+                             (df['Open'] < df['Close'].shift(1)) &
+                             (df['Close'] > df['Open'].shift(1)))
+            df['bullish_engulfing'] = bullish_engulf.astype(int)
+            
+            bearish_engulf = ((df['Close'] < df['Open']) & 
+                             (df['Close'].shift(1) > df['Open'].shift(1)) &
+                             (df['Open'] > df['Close'].shift(1)) &
+                             (df['Close'] < df['Open'].shift(1)))
+            df['bearish_engulfing'] = bearish_engulf.astype(int)
+            
+            # Candle momentum (consecutive same-color candles)
+            df['is_bullish_candle'] = (df['Close'] > df['Open']).astype(int)
+            df['consecutive_bullish'] = df['is_bullish_candle'].rolling(3).sum()
+            df['consecutive_bearish'] = (1 - df['is_bullish_candle']).rolling(3).sum()
+            
+        except Exception as e:
+            self.logger.warning(f"Error adding candlestick patterns: {e}", category="ml_training")
+        
+        return df
+    
+    def _add_feature_interactions(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add feature interaction terms"""
+        try:
+            # RSI * Volume ratio
+            if 'rsi' in df.columns and 'volume_ma_ratio' in df.columns:
+                df['rsi_volume_interaction'] = df['rsi'] * df['volume_ma_ratio']
+            
+            # Trend * Momentum alignment
+            if 'ema_20' in df.columns and 'ema_50' in df.columns and 'macd' in df.columns:
+                df['trend_momentum_align'] = ((df['ema_20'] > df['ema_50']).astype(int) * 
+                                             np.sign(df['macd']))
+            
+            # Volatility * Price position
+            if 'bb_width' in df.columns and 'close_position' in df.columns:
+                df['vol_position_interaction'] = df['bb_width'] * df['close_position']
+            
+            # ADX * RSI (trend strength * momentum)
+            if 'adx' in df.columns and 'rsi' in df.columns:
+                df['adx_rsi_interaction'] = df['adx'] * (df['rsi'] / 100)
+            
+        except Exception as e:
+            self.logger.warning(f"Error adding feature interactions: {e}", category="ml_training")
+        
+        return df
+    
+    def _add_market_regime_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add market regime detection features"""
+        try:
+            # Volatility regime
+            if 'atr_pct' in df.columns:
+                atr_ma = df['atr_pct'].rolling(50).mean()
+                df['volatility_regime'] = (df['atr_pct'] / atr_ma).fillna(1.0)
+            
+            # Trend regime (ADX-based)
+            if 'adx' in df.columns:
+                df['is_trending'] = (df['adx'] > 25).astype(int)
+            
+            # Volume regime
+            if 'Volume' in df.columns:
+                vol_ma = df['Volume'].rolling(50).mean()
+                df['volume_regime'] = (df['Volume'] / vol_ma).fillna(1.0)
+            
+            # Price efficiency (trending vs choppy)
+            price_change = abs(df['Close'] - df['Close'].shift(10))
+            path_length = df['Close'].diff().abs().rolling(10).sum()
+            df['price_efficiency'] = (price_change / path_length).fillna(0.5)
+            
+        except Exception as e:
+            self.logger.warning(f"Error adding market regime features: {e}", category="ml_training")
+        
+        return df
+    
+    def _add_lagged_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add lagged features for temporal patterns"""
+        try:
+            # Lagged returns
+            for lag in [1, 2, 3, 5]:
+                df[f'return_lag_{lag}'] = df['Close'].pct_change(lag)
+            
+            # Lagged RSI
+            if 'rsi' in df.columns:
+                df['rsi_lag_1'] = df['rsi'].shift(1)
+                df['rsi_change'] = df['rsi'] - df['rsi'].shift(1)
+            
+            # Lagged volume
+            if 'Volume' in df.columns:
+                df['volume_lag_1'] = df['Volume'].shift(1)
+            
+            # Price acceleration (rate of change of returns)
+            df['price_acceleration'] = df['Close'].pct_change().diff()
+            
+        except Exception as e:
+            self.logger.warning(f"Error adding lagged features: {e}", category="ml_training")
+        
+        return df
+    
     def get_feature_names(self) -> List[str]:
-        """Get list of feature names"""
-        return [
+        """Get list of feature names (dynamically generated based on actual features)"""
+        # Base features that should always exist
+        base_features = [
             'rsi', 'macd', 'macd_signal', 'macd_hist',
             'adx', 'plus_di', 'minus_di',
             'bb_width', 'atr_pct',
@@ -177,8 +317,27 @@ class FeatureEngineer:
             'close_position',
             'volume_change', 'volume_ma_ratio',
             'hour', 'day_of_week', 'is_london_session', 'is_ny_session',
-            'recent_highs', 'recent_lows', 'trend_strength'
+            'recent_highs', 'recent_lows', 'trend_strength',
+            'higher_high', 'lower_low', 'structure_score',
         ]
+        
+        # Advanced features (newly added)
+        advanced_features = [
+            # Candlestick patterns
+            'is_doji', 'is_hammer', 'is_shooting_star',
+            'bullish_engulfing', 'bearish_engulfing',
+            'is_bullish_candle', 'consecutive_bullish', 'consecutive_bearish',
+            # Feature interactions
+            'rsi_volume_interaction', 'trend_momentum_align',
+            'vol_position_interaction', 'adx_rsi_interaction',
+            # Market regimes
+            'volatility_regime', 'is_trending', 'volume_regime', 'price_efficiency',
+            # Lagged features
+            'return_lag_1', 'return_lag_2', 'return_lag_3', 'return_lag_5',
+            'rsi_lag_1', 'rsi_change', 'volume_lag_1', 'price_acceleration',
+        ]
+        
+        return base_features + advanced_features
 
 
 if __name__ == "__main__":

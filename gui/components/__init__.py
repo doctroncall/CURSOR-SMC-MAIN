@@ -1,5 +1,9 @@
 """
 GUI Components Package
+
+v2.0 Components:
+- ml_training_panel: Professional ML model training interface
+- regime_panel: Market regime detection and visualization
 """
 from .sentiment_card import render_sentiment_card, render_confidence_bar, render_factors_table
 from .chart_panel import render_price_chart, render_indicator_charts, render_smc_analysis
