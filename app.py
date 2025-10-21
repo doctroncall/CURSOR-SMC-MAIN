@@ -573,18 +573,198 @@ def main():
                     log_to_console("Test warning message", "WARNING")
                     st.warning("Test warning added!")
     
-    # Footer
+    # Footer Actions
     st.divider()
     col1, col2, col3 = st.columns(3)
+    
     with col1:
         if st.button("📊 Generate Report"):
-            st.info("Report generation coming soon...")
+            if st.session_state.analysis_results:
+                try:
+                    with st.spinner("Generating PDF report..."):
+                        results = st.session_state.analysis_results
+                        
+                        # Prepare data for report
+                        if 'dominant_sentiment' in results:
+                            # Multi-timeframe results
+                            analysis_data = {
+                                'sentiment': results['dominant_sentiment']['sentiment'],
+                                'confidence': results['overall_confidence'],
+                                'risk_level': 'MEDIUM',
+                                'insights': results.get('suggestions', [])
+                            }
+                        else:
+                            # Single timeframe results
+                            analysis_data = results
+                        
+                        # Get recent predictions from database
+                        predictions = []
+                        try:
+                            recent_preds = components['repository'].get_predictions(
+                                symbol_name=symbol,
+                                limit=10
+                            )
+                            for pred in recent_preds:
+                                predictions.append({
+                                    'time': pred.timestamp.strftime('%Y-%m-%d %H:%M'),
+                                    'sentiment': pred.sentiment,
+                                    'confidence': pred.confidence,
+                                    'result': pred.actual_outcome or 'Pending'
+                                })
+                        except:
+                            pass
+                        
+                        # Calculate stats
+                        stats = {
+                            'total': len(predictions),
+                            'correct': sum(1 for p in predictions if p['result'] == p['sentiment']),
+                            'incorrect': sum(1 for p in predictions if p['result'] not in [p['sentiment'], 'Pending', None]),
+                            'accuracy': 0.0
+                        }
+                        if stats['total'] > 0:
+                            stats['accuracy'] = stats['correct'] / stats['total']
+                        
+                        # Generate report
+                        report_path = components['pdf_generator'].generate_daily_report(
+                            symbol=symbol,
+                            analysis_results=analysis_data,
+                            predictions=predictions,
+                            stats=stats
+                        )
+                        
+                        st.success(f"✓ Report generated successfully!")
+                        
+                        # Offer download
+                        with open(report_path, 'rb') as f:
+                            st.download_button(
+                                label="📥 Download Report",
+                                data=f,
+                                file_name=Path(report_path).name,
+                                mime="application/pdf"
+                            )
+                        
+                        log_to_console(f"Generated report: {report_path}", "INFO")
+                        add_activity(f"PDF report generated for {symbol}", "📊", "success")
+                        
+                except Exception as e:
+                    st.error(f"Failed to generate report: {str(e)}")
+                    logger.error(f"Report generation error: {str(e)}", category="reporting")
+            else:
+                st.warning("⚠️ Run analysis first to generate a report")
+    
     with col2:
         if st.button("📥 Export Data"):
-            st.info("Data export coming soon...")
+            if st.session_state.analysis_results:
+                try:
+                    results = st.session_state.analysis_results
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    
+                    # Prepare export data
+                    if 'timeframe_results' in results:
+                        # Multi-timeframe export
+                        export_data = []
+                        for tf, tf_result in results['timeframe_results'].items():
+                            export_data.append({
+                                'Timeframe': tf,
+                                'Sentiment': tf_result.get('sentiment', 'N/A'),
+                                'Confidence': f"{tf_result.get('confidence', 0):.2%}",
+                                'Risk Level': tf_result.get('risk_level', 'N/A'),
+                                'Price': tf_result.get('price', 0),
+                                'Timestamp': tf_result.get('timestamp', datetime.now()).strftime('%Y-%m-%d %H:%M:%S')
+                            })
+                        
+                        # Add overall summary
+                        export_data.append({
+                            'Timeframe': 'OVERALL',
+                            'Sentiment': results['dominant_sentiment']['sentiment'],
+                            'Confidence': f"{results['overall_confidence']:.2%}",
+                            'Risk Level': 'N/A',
+                            'Price': '',
+                            'Timestamp': results.get('timestamp', datetime.now()).strftime('%Y-%m-%d %H:%M:%S')
+                        })
+                    else:
+                        # Single timeframe export
+                        export_data = [{
+                            'Symbol': results.get('symbol', 'N/A'),
+                            'Timeframe': results.get('timeframe', 'N/A'),
+                            'Sentiment': results.get('sentiment', 'N/A'),
+                            'Confidence': f"{results.get('confidence', 0):.2%}",
+                            'Risk Level': results.get('risk_level', 'N/A'),
+                            'Price': results.get('price', 0),
+                            'Timestamp': results.get('timestamp', datetime.now()).strftime('%Y-%m-%d %H:%M:%S')
+                        }]
+                    
+                    # Convert to CSV
+                    df_export = pd.DataFrame(export_data)
+                    csv = df_export.to_csv(index=False)
+                    
+                    # Offer download
+                    st.download_button(
+                        label="📥 Download CSV",
+                        data=csv,
+                        file_name=f"{symbol}_analysis_{timestamp}.csv",
+                        mime="text/csv"
+                    )
+                    
+                    st.success("✓ Data ready for export!")
+                    log_to_console(f"Exported analysis data for {symbol}", "INFO")
+                    add_activity(f"Analysis data exported for {symbol}", "📥", "success")
+                    
+                except Exception as e:
+                    st.error(f"Export failed: {str(e)}")
+                    logger.error(f"Export error: {str(e)}", category="general")
+            else:
+                st.warning("⚠️ Run analysis first to export data")
+    
     with col3:
         if st.button("📋 View Logs"):
-            st.info("Log viewer coming soon...")
+            try:
+                from config.settings import LOGS_DIR
+                log_files = list(LOGS_DIR.glob("*.log"))
+                
+                if log_files:
+                    # Sort by modification time (newest first)
+                    log_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+                    
+                    st.subheader("📋 Log Files")
+                    
+                    # Show log file selector
+                    selected_log = st.selectbox(
+                        "Select log file:",
+                        log_files,
+                        format_func=lambda x: f"{x.name} ({x.stat().st_size / 1024:.1f} KB)"
+                    )
+                    
+                    if selected_log:
+                        # Show last N lines
+                        num_lines = st.slider("Number of lines to display:", 10, 500, 100)
+                        
+                        try:
+                            with open(selected_log, 'r') as f:
+                                lines = f.readlines()
+                                last_lines = lines[-num_lines:] if len(lines) > num_lines else lines
+                                
+                            st.code(''.join(last_lines), language='log')
+                            
+                            # Offer download
+                            with open(selected_log, 'r') as f:
+                                st.download_button(
+                                    label="📥 Download Full Log",
+                                    data=f.read(),
+                                    file_name=selected_log.name,
+                                    mime="text/plain"
+                                )
+                            
+                            log_to_console(f"Viewed log file: {selected_log.name}", "INFO")
+                            
+                        except Exception as e:
+                            st.error(f"Error reading log file: {str(e)}")
+                else:
+                    st.info("No log files found in logs directory")
+                    
+            except Exception as e:
+                st.error(f"Failed to access logs: {str(e)}")
+                logger.error(f"Log viewer error: {str(e)}", category="general")
 
 
 if __name__ == "__main__":

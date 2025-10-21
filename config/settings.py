@@ -166,22 +166,22 @@ class SMCConfig:
 class SentimentConfig:
     """Sentiment Analysis Configuration"""
     # Weights for different components
-    TREND_WEIGHT: float = 0.25
-    SMC_WEIGHT: float = 0.30
+    TREND_WEIGHT: float = 0.20
+    SMC_WEIGHT: float = 0.35  # Increased for better FVG/structure detection
     MOMENTUM_WEIGHT: float = 0.20
     VOLUME_WEIGHT: float = 0.15
     VOLATILITY_WEIGHT: float = 0.10
     
-    # Thresholds
-    BULLISH_THRESHOLD: float = 0.60
-    BEARISH_THRESHOLD: float = 0.40
+    # Thresholds (lowered to reduce neutral bias)
+    BULLISH_THRESHOLD: float = 0.35  # Symmetric thresholds
+    BEARISH_THRESHOLD: float = 0.35  # Symmetric thresholds
     
-    # Multi-timeframe weights
+    # Multi-timeframe weights (D1 primary, H4 secondary)
     MTF_WEIGHTS = {
-        "M15": 0.15,
-        "H1": 0.25,
-        "H4": 0.30,
-        "D1": 0.30,
+        "M15": 0.10,
+        "H1": 0.20,
+        "H4": 0.30,  # Secondary importance
+        "D1": 0.40,  # Primary timeframe
     }
 
 
