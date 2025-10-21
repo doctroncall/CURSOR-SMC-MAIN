@@ -215,11 +215,23 @@ def main():
                 update_module_status('mt5_connection', 'running', 'Checking MT5 connection...')
                 log_to_console("Checking MT5 connection...", "INFO")
                 
-                # Get connector from session state
-                connector = get_mt5_connector()
+                # Get connector from session state (must be same instance that was connected)
+                if 'mt5_connector' not in st.session_state:
+                    st.error("❌ MT5 connector not initialized. Please go to Settings → MT5 Connection and click CONNECT first.")
+                    update_module_status('mt5_connection', 'error', 'Connector not initialized')
+                    add_activity("Analysis failed: Connector not initialized", "❌", "error")
+                    log_to_console("MT5 connector not initialized", "ERROR")
+                    return
                 
-                if not connector.is_connected():
-                    st.error("❌ MT5 not connected. Please connect in Settings → MT5 Connection")
+                connector = st.session_state.mt5_connector
+                log_to_console(f"Got connector from session state: {connector}", "DEBUG")
+                
+                is_connected = connector.is_connected()
+                log_to_console(f"Connector.is_connected() returned: {is_connected}", "DEBUG")
+                
+                if not is_connected:
+                    st.error("❌ MT5 not connected. Please go to Settings → MT5 Connection and click CONNECT first.")
+                    update_module_status('mt5_connection', 'error', 'Not connected')
                     add_activity("Analysis failed: MT5 not connected", "❌", "error")
                     log_to_console("MT5 not connected - user must connect manually", "ERROR")
                     return
@@ -579,6 +591,12 @@ def main():
 
 
 if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        logger.error(f"Application error: {str(e)}", category="general")
+        st.error(f"Application error: {str(e)}")
+me__ == "__main__":
     try:
         main()
     except Exception as e:

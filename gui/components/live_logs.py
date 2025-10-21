@@ -237,13 +237,25 @@ def render_module_status():
 def update_module_status(module_name: str, status: str, action: str):
     """Update module status in session state"""
     if 'module_status' not in st.session_state:
-        st.session_state.module_status = {}
+        st.session_state.module_status = {
+            'mt5_connection': {'status': 'idle', 'last_action': 'Not started', 'timestamp': None},
+            'data_fetcher': {'status': 'idle', 'last_action': 'Not started', 'timestamp': None},
+            'indicators': {'status': 'idle', 'last_action': 'Not started', 'timestamp': None},
+            'smc_analyzer': {'status': 'idle', 'last_action': 'Not started', 'timestamp': None},
+            'sentiment_engine': {'status': 'idle', 'last_action': 'Not started', 'timestamp': None},
+            'database': {'status': 'idle', 'last_action': 'Not started', 'timestamp': None},
+            'health_monitor': {'status': 'idle', 'last_action': 'Not started', 'timestamp': None},
+        }
     
+    # Update the specific module
     st.session_state.module_status[module_name] = {
         'status': status,
         'last_action': action,
         'timestamp': datetime.now()
     }
+    
+    # Print to console for debugging
+    print(f"[DEBUG] update_module_status({module_name}) -> status={status}, action={action}")
 
 
 def render_activity_feed():
