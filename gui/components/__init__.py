@@ -12,6 +12,10 @@ from .settings_panel import (
     render_mt5_settings, render_analysis_settings, render_model_settings,
     render_alert_settings, render_display_settings, render_data_management
 )
+from .live_logs import (
+    render_live_logs, render_module_status, render_activity_feed,
+    render_debug_console, update_module_status, add_activity, log_to_console
+)
 
 __all__ = [
     'render_sentiment_card',
@@ -34,4 +38,11 @@ __all__ = [
     'render_alert_settings',
     'render_display_settings',
     'render_data_management',
+    'render_live_logs',
+    'render_module_status',
+    'render_activity_feed',
+    'render_debug_console',
+    'update_module_status',
+    'add_activity',
+    'log_to_console',
 ]
