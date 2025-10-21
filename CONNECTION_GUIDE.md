@@ -244,6 +244,29 @@ st.session_state.mt5_connector
 
 ---
 
+**Error Code -6: Authorization Failed**
+```
+❌ Initialization failed - Code -6: Terminal: Authorization failed
+💡 Authorization failed - MT5 terminal might be blocking API access
+```
+
+**Solution:**
+1. Open MT5 terminal manually
+2. Go to **Tools → Options → Expert Advisors**
+3. Enable: ☑ **Allow automated trading**
+4. Enable: ☑ **Allow DLL imports**
+5. Check that **AutoTrading button** is enabled (green) in toolbar
+6. Close any other programs trying to connect to MT5
+7. Restart MT5 as Administrator if needed
+
+**Common Causes:**
+- AutoTrading disabled in MT5 settings
+- DLL imports not allowed
+- Another program already connected to MT5
+- MT5 terminal security settings too restrictive
+
+---
+
 **Error Code 10004: No Connection**
 ```
 ❌ Login failed - Code 10004: No connection
