@@ -106,15 +106,19 @@ def initialize_components():
         return None
 
 
-def get_mt5_data(symbol: str, timeframes: list, connection, data_fetcher):
+def get_mt5_data(symbol: str, timeframes: list, data_fetcher):
     """Fetch MT5 data for multiple timeframes"""
     data_dict = {}
     
     for tf in timeframes:
         with st.spinner(f"Fetching {symbol} {tf} data..."):
+            log_to_console(f"Fetching {symbol} {tf}...", "DEBUG")
             df = data_fetcher.get_ohlcv(symbol, tf, count=1000)
             if df is not None and not df.empty:
                 data_dict[tf] = df
+                log_to_console(f"✓ Fetched {len(df)} bars for {tf}", "DEBUG")
+            else:
+                log_to_console(f"✗ Failed to fetch {tf}", "WARNING")
     
     return data_dict
 
@@ -241,7 +245,7 @@ def main():
                     all_timeframes = [primary_tf]
                     log_to_console(f"Single timeframe: {primary_tf}", "DEBUG")
                 
-                data_dict = get_mt5_data(symbol, all_timeframes, connection, data_fetcher)
+                data_dict = get_mt5_data(symbol, all_timeframes, data_fetcher)
                 
                 if not data_dict:
                     update_module_status('data_fetcher', 'error', 'Failed to fetch data')
