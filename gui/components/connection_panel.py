@@ -166,12 +166,7 @@ def render_connection_widget():
         else:
             st.success("🟢 MT5 Connected")
     else:
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.error("🔴 MT5 Disconnected - Go to Settings → Connection")
-        with col2:
-            if st.button("Connect"):
-                st.switch_page("Settings")
+        st.error("🔴 MT5 Disconnected - Go to Settings tab → MT5 Connection to connect")
 
 
 def get_connection_status() -> dict:

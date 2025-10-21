@@ -451,8 +451,11 @@ def main():
         if health_check_button or st.session_state.health_results is None:
             with st.spinner("Running health check..."):
                 try:
-                    # Get connector for health check
-                    connector = get_mt5_connector()
+                    # Get connector from session state (same one used for connection)
+                    if 'mt5_connector' not in st.session_state:
+                        st.session_state.mt5_connector = get_connector()
+                    
+                    connector = st.session_state.mt5_connector
                     health_results = components['health_monitor'].perform_health_check(
                         connector=connector,
                         repository=components['repository']

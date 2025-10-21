@@ -75,9 +75,9 @@ class MT5DataFetcher:
         Initialize data fetcher
         
         Args:
-            connection: MT5Connection instance (creates new if not provided)
+            connection: MT5Connection instance (optional, uses global MT5 if None)
         """
-        self.connection = connection if connection else MT5Connection()
+        self.connection = connection  # None means use global MT5 API
         self.validator = DataValidator()
         
         # Statistics
