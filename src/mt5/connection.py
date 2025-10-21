@@ -380,6 +380,9 @@ def ensure_connection(func):
     """
     @wraps(func)
     def wrapper(self, *args, **kwargs):
+        # If no connection object is provided, assume global MT5 API is used
+        if not hasattr(self, "connection") or self.connection is None:
+            return func(self, *args, **kwargs)
         if not self.connection.is_connected():
             try:
                 self.connection.reconnect()
