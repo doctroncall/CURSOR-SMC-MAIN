@@ -208,12 +208,37 @@ class MT5DataFetcher:
                 return None
             
             # Ensure symbol is selected/visible in Market Watch
+            # First, try to find the correct symbol name
+            correct_symbol = self.find_symbol(symbol)
+            if correct_symbol is None:
+                print(f"[DEBUG]   ✗ SYMBOL NOT FOUND: '{symbol}' is not available")
+                print(f"[DEBUG]   Try checking available symbols with mt5.symbols_get()")
+                
+                # Show some available symbols for debugging
+                available = self.get_available_symbols("*FX*")  # Try forex symbols
+                if not available:
+                    available = self.get_available_symbols()  # Try all symbols
+                
+                if available:
+                    print(f"[DEBUG]   Available symbols (first 10): {available[:10]}")
+                
+                self.stats["failed_requests"] += 1
+                return None
+            
+            # Update symbol if we found a different name
+            if correct_symbol != symbol:
+                print(f"[DEBUG]   Using symbol: {correct_symbol} (instead of {symbol})")
+                symbol = correct_symbol
+            
+            # Check if symbol needs to be selected
             info = mt5.symbol_info(symbol)
             if info is None or not info.visible:
                 print(f"[DEBUG]   Symbol {symbol} not visible. Attempting to select...")
                 if not mt5.symbol_select(symbol, True):
                     error = mt5.last_error()
                     print(f"[DEBUG]   ✗ SYMBOL SELECT FAILED - MT5 Error: {error}")
+                    print(f"[DEBUG]   This usually means the symbol is not available in your broker's Market Watch")
+                    print(f"[DEBUG]   Please check if the symbol exists in your MT5 terminal")
                     self.stats["failed_requests"] += 1
                     return None
                 else:
@@ -362,6 +387,58 @@ class MT5DataFetcher:
                 result[tf] = df
         
         return result
+    
+    def find_symbol(self, symbol: str) -> Optional[str]:
+        """
+        Find symbol by searching for exact match or similar names
+        
+        Args:
+            symbol: Symbol to search for (e.g., "GBPUSD")
+            
+        Returns:
+            Optional[str]: Exact or closest matching symbol name, or None
+        """
+        try:
+            # First try exact match
+            info = mt5.symbol_info(symbol)
+            if info is not None:
+                return symbol
+            
+            # Try to find similar symbols
+            print(f"[DEBUG]   Searching for symbols matching '{symbol}'...")
+            all_symbols = mt5.symbols_get()
+            if all_symbols is None:
+                return None
+            
+            # Look for symbols containing the search term
+            matches = []
+            symbol_upper = symbol.upper()
+            
+            for s in all_symbols:
+                s_name_upper = s.name.upper()
+                # Exact match (case-insensitive)
+                if s_name_upper == symbol_upper:
+                    matches.append((s.name, 0))  # Priority 0 (highest)
+                # Starts with the symbol
+                elif s_name_upper.startswith(symbol_upper):
+                    matches.append((s.name, 1))  # Priority 1
+                # Contains the symbol
+                elif symbol_upper in s_name_upper:
+                    matches.append((s.name, 2))  # Priority 2
+            
+            if matches:
+                # Sort by priority and return the best match
+                matches.sort(key=lambda x: x[1])
+                print(f"[DEBUG]   Found {len(matches)} matching symbols:")
+                for name, priority in matches[:5]:  # Show top 5
+                    print(f"[DEBUG]     - {name}")
+                return matches[0][0]
+            
+            return None
+            
+        except Exception as e:
+            print(f"[DEBUG]   Error finding symbol: {str(e)}")
+            return None
     
     def get_available_symbols(self, group: str = "*") -> List[str]:
         """
