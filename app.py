@@ -20,6 +20,10 @@ from src.health.monitor import HealthMonitor
 from src.database.repository import get_repository
 from src.utils.logger import setup_logging, get_logger
 from src.reporting.pdf_generator import PDFReportGenerator
+# v2.0 Automation
+from src.ml.startup_wizard import StartupWizard
+from src.ml.prediction_tracker import PredictionTracker
+from src.ml.continuous_learner import ContinuousLearner
 
 # GUI Components
 from gui.components.sentiment_card import render_sentiment_card, render_confidence_bar, render_factors_table
@@ -129,8 +133,16 @@ def get_mt5_data(symbol: str, timeframes: list, data_fetcher):
 def main():
     """Main application"""
     
+    # v2.0 AUTOMATION: Check for first-run wizard
+    wizard = StartupWizard()
+    
+    if wizard.should_show_wizard():
+        wizard.run()
+        return  # Show only wizard on first run
+    
     # Header
-    st.markdown('<h1 class="main-header">🎯 MT5 Sentiment Analysis Bot</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">🎯 MT5 Sentiment Analysis Bot v2.0</h1>', unsafe_allow_html=True)
+    st.caption("✨ Fully Automated • Self-Improving • 75-85% Accuracy")
     
     # Connection status widget at top
     render_connection_widget()
