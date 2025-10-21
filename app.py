@@ -40,6 +40,9 @@ from gui.components.live_logs import (
 from gui.components.connection_panel import (
     render_connection_panel, render_connection_widget, get_mt5_connector
 )
+# New v2.0 Components
+from gui.components.ml_training_panel import render_ml_training_panel
+from gui.components.regime_panel import render_regime_panel
 
 # Initialize logging
 setup_logging()
@@ -184,12 +187,14 @@ def main():
         with col2:
             health_check_button = st.button("🏥 Health Check", use_container_width=True)
     
-    # Main content tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    # Main content tabs (Added new v2.0 tabs)
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
         "📊 Analysis",
         "📈 Indicators",
         "📊 Metrics",
         "🧠 SMC",
+        "🌡️ Market Regime",  # NEW v2.0
+        "🤖 ML Training",  # NEW v2.0
         "🏥 Health",
         "⚙️ Settings",
         "📋 Logs & Debug"
@@ -456,8 +461,93 @@ def main():
         else:
             st.info("Run analysis first to see SMC analysis")
     
-    # Health Tab
+    # Market Regime Tab (NEW v2.0)
     with tab5:
+        st.header("🌡️ Market Regime Detection")
+        
+        st.markdown("""
+        <div style="background-color: #EEF2FF; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <h4 style="color: #3B82F6; margin: 0;">✨ New in v2.0</h4>
+            <p style="margin: 10px 0 0 0;">
+                Intelligent market regime detection helps you adapt your trading to current market conditions.
+                System analyzes trend strength, volatility levels, and volume patterns.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Get data for regime analysis
+        if 'mt5_connector' in st.session_state and st.session_state.mt5_connector.is_connected():
+            # Fetch fresh data for regime analysis
+            col1, col2, col3 = st.columns([2, 1, 1])
+            
+            with col1:
+                regime_symbol = st.selectbox(
+                    "Symbol for Regime Analysis",
+                    ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"],
+                    key="regime_symbol"
+                )
+            
+            with col2:
+                regime_tf = st.selectbox(
+                    "Timeframe",
+                    ["M15", "H1", "H4", "D1"],
+                    index=2,  # Default to H4
+                    key="regime_tf"
+                )
+            
+            with col3:
+                if st.button("🔍 Analyze Regime", type="primary"):
+                    with st.spinner(f"Fetching {regime_symbol} {regime_tf} data..."):
+                        try:
+                            from src.mt5.data_fetcher import MT5DataFetcher
+                            
+                            fetcher = MT5DataFetcher(connection=None)
+                            regime_df = fetcher.get_ohlcv(regime_symbol, regime_tf, count=500)
+                            
+                            if regime_df is not None and not regime_df.empty:
+                                st.session_state.regime_data = regime_df
+                                st.session_state.regime_symbol = regime_symbol
+                                st.session_state.regime_tf = regime_tf
+                                st.success(f"✓ Loaded {len(regime_df)} bars")
+                            else:
+                                st.error("Failed to fetch data")
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
+            
+            # Display regime analysis
+            if 'regime_data' in st.session_state:
+                render_regime_panel(
+                    st.session_state.regime_data,
+                    st.session_state.get('regime_symbol', symbol),
+                    st.session_state.get('regime_tf', primary_tf)
+                )
+            else:
+                st.info("👆 Click 'Analyze Regime' to detect market conditions")
+        else:
+            st.warning("⚠️ Please connect to MT5 first (Settings → MT5 Connection)")
+    
+    # ML Training Tab (NEW v2.0)
+    with tab6:
+        st.header("🤖 ML Model Training")
+        
+        st.markdown("""
+        <div style="background-color: #F0FDF4; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <h4 style="color: #10B981; margin: 0;">✨ New in v2.0 - Professional ML Training</h4>
+            <ul style="margin: 10px 0 0 20px;">
+                <li><strong>70+ Features:</strong> Comprehensive market analysis</li>
+                <li><strong>Smart Targets:</strong> 10+ pip meaningful moves only</li>
+                <li><strong>SMOTE Balancing:</strong> Prevent bias</li>
+                <li><strong>4-Model Ensemble:</strong> XGBoost, RF, LightGBM, CatBoost</li>
+                <li><strong>Hyperparameter Tuning:</strong> Automated optimization (optional)</li>
+                <li><strong>Calibrated Probabilities:</strong> Reliable confidence scores</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        render_ml_training_panel()
+    
+    # Health Tab
+    with tab7:
         st.header("System Health")
         
         if health_check_button or st.session_state.health_results is None:
@@ -491,7 +581,7 @@ def main():
             st.info("👆 Click 'Health Check' to view system status")
     
     # Settings Tab
-    with tab6:
+    with tab8:
         st.header("⚙️ Configuration")
         
         st.info("💡 **Configuration Settings:** Adjust bot parameters and preferences below.")
@@ -529,7 +619,7 @@ def main():
             render_data_management()
     
     # Logs & Debug Tab
-    with tab7:
+    with tab9:
         st.header("📋 Logs & Debug Console")
         
         debug_tab1, debug_tab2, debug_tab3, debug_tab4 = st.tabs([
