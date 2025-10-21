@@ -207,6 +207,18 @@ class MT5DataFetcher:
                 self.stats["failed_requests"] += 1
                 return None
             
+            # Ensure symbol is selected/visible in Market Watch
+            info = mt5.symbol_info(symbol)
+            if info is None or not info.visible:
+                print(f"[DEBUG]   Symbol {symbol} not visible. Attempting to select...")
+                if not mt5.symbol_select(symbol, True):
+                    error = mt5.last_error()
+                    print(f"[DEBUG]   ✗ SYMBOL SELECT FAILED - MT5 Error: {error}")
+                    self.stats["failed_requests"] += 1
+                    return None
+                else:
+                    print(f"[DEBUG]   ✓ Symbol {symbol} selected")
+
             # Convert timeframe string to MT5 constant
             print(f"[DEBUG]   Converting timeframe: {timeframe}")
             tf = Timeframe.from_string(timeframe)
