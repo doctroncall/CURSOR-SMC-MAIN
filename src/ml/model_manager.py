@@ -10,9 +10,17 @@ from datetime import datetime
 
 from .training import ModelTrainer
 from .evaluator import ModelEvaluator
+from .hyperparameter_tuner import HyperparameterTuner
+from .calibrator import ProbabilityCalibrator
+from .feature_selector import FeatureSelector
 from config.settings import MLConfig, MODELS_DIR
 from src.database.repository import DatabaseRepository
 from src.utils.logger import get_logger
+
+try:
+    from .hyperparameter_tuner import OPTUNA_AVAILABLE
+except:
+    OPTUNA_AVAILABLE = False
 
 logger = get_logger()
 
@@ -33,6 +41,9 @@ class ModelManager:
         """Initialize model manager"""
         self.trainer = ModelTrainer()
         self.evaluator = ModelEvaluator()
+        self.tuner = HyperparameterTuner() if OPTUNA_AVAILABLE else None
+        self.calibrator = ProbabilityCalibrator()
+        self.feature_selector = FeatureSelector()
         self.repository = repository
         self.config = MLConfig
         self.logger = logger
@@ -42,18 +53,27 @@ class ModelManager:
         
         self.active_model = None
         self.active_scaler = None
+        self.selected_features = None
     
     def train_new_model(
         self,
         df,
-        version: Optional[str] = None
+        version: Optional[str] = None,
+        tune_hyperparameters: bool = False,
+        select_features: bool = True,
+        calibrate_probabilities: bool = True,
+        n_features: int = 50
     ) -> Dict[str, Any]:
         """
-        Train a new model
+        Train a new model with advanced capabilities
         
         Args:
             df: Training data DataFrame
             version: Model version string
+            tune_hyperparameters: Whether to tune hyperparameters (slower but better)
+            select_features: Whether to perform feature selection
+            calibrate_probabilities: Whether to calibrate probabilities
+            n_features: Number of features to select (if select_features=True)
             
         Returns:
             Dict with training results
@@ -64,10 +84,78 @@ class ModelManager:
             self.logger.info(f"Training new model {version}", category="ml_training")
             
             # Prepare data
-            X, y = self.trainer.prepare_training_data(df)
+            X, y = self.trainer.prepare_training_data(
+                df,
+                min_move_pips=self.config.MIN_MOVE_PIPS,
+                lookforward_bars=self.config.LOOKFORWARD_BARS
+            )
+            
+            # Feature selection
+            if select_features and len(X.columns) > n_features:
+                self.logger.info("Performing feature selection", category="ml_training")
+                selected_features, selection_report = self.feature_selector.select_comprehensive(
+                    X, y, n_features=n_features
+                )
+                X = X[selected_features]
+                self.selected_features = selected_features
+                self.logger.info(
+                    f"Features reduced: {selection_report['original_features']} → "
+                    f"{selection_report['final_features']}",
+                    category="ml_training"
+                )
+            else:
+                self.selected_features = X.columns.tolist()
+                selection_report = None
+            
+            # Hyperparameter tuning (optional, takes longer)
+            if tune_hyperparameters and self.tuner is not None:
+                self.logger.info("Tuning hyperparameters (this may take a while)", category="ml_training")
+                tuning_results = self.tuner.tune_all(X, y, n_trials_per_model=30)
+            else:
+                tuning_results = None
             
             # Train model
-            result = self.trainer.train_model(X, y, version)
+            result = self.trainer.train_model(
+                X, y, version,
+                use_class_balancing=self.config.USE_CLASS_BALANCING,
+                use_tscv=self.config.USE_TSCV
+            )
+            
+            # Probability calibration
+            if calibrate_probabilities:
+                self.logger.info("Calibrating probabilities", category="ml_training")
+                from sklearn.model_selection import train_test_split
+                
+                # Split for calibration
+                X_cal_train, X_cal_test, y_cal_train, y_cal_test = train_test_split(
+                    X, y, test_size=0.2, shuffle=False, random_state=42
+                )
+                
+                # Calibrate
+                calibrated_model = self.calibrator.calibrate(
+                    result['model'],
+                    X_cal_train,
+                    y_cal_train,
+                    cv=3
+                )
+                
+                # Evaluate calibration
+                calibration_metrics = self.calibrator.evaluate_calibration(
+                    calibrated_model,
+                    X_cal_test,
+                    y_cal_test
+                )
+                
+                result['calibrated_model'] = calibrated_model
+                result['calibration_metrics'] = calibration_metrics
+                
+                # Use calibrated model as primary
+                result['model'] = calibrated_model
+            
+            # Add metadata
+            result['selected_features'] = self.selected_features
+            result['feature_selection_report'] = selection_report
+            result['tuning_results'] = tuning_results
             
             # Save model
             self.save_model(

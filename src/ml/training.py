@@ -9,11 +9,24 @@ from sklearn.model_selection import train_test_split, cross_val_score, TimeSerie
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.class_weight import compute_class_weight
 import xgboost as xgb
+
 try:
     from imblearn.over_sampling import SMOTE
     SMOTE_AVAILABLE = True
 except ImportError:
     SMOTE_AVAILABLE = False
+
+try:
+    import lightgbm as lgb
+    LIGHTGBM_AVAILABLE = True
+except ImportError:
+    LIGHTGBM_AVAILABLE = False
+
+try:
+    import catboost as cb
+    CATBOOST_AVAILABLE = True
+except ImportError:
+    CATBOOST_AVAILABLE = False
 from typing import Dict, Any, Tuple
 import time
 from datetime import datetime
@@ -199,16 +212,65 @@ class ModelTrainer:
             )
             rf_model.fit(X_train_scaled, y_train)
             
+            # Initialize estimators list for ensemble
+            estimators = [
+                ('xgb', xgb_model),
+                ('rf', rf_model)
+            ]
+            weights = [self.config.XGBOOST_WEIGHT, self.config.RANDOM_FOREST_WEIGHT]
+            
+            # Train LightGBM if available
+            if LIGHTGBM_AVAILABLE:
+                lgb_model = lgb.LGBMClassifier(
+                    n_estimators=200,
+                    max_depth=5,
+                    learning_rate=0.05,
+                    num_leaves=31,
+                    min_child_samples=20,
+                    subsample=0.8,
+                    colsample_bytree=0.8,
+                    class_weight='balanced' if not use_class_balancing or not SMOTE_AVAILABLE else None,
+                    random_state=self.config.RANDOM_STATE,
+                    n_jobs=-1,
+                    verbose=-1
+                )
+                lgb_model.fit(X_train_scaled, y_train)
+                estimators.append(('lgb', lgb_model))
+                weights.append(0.15)
+                self.logger.info("LightGBM added to ensemble", category="ml_training")
+            
+            # Train CatBoost if available
+            if CATBOOST_AVAILABLE:
+                cat_model = cb.CatBoostClassifier(
+                    iterations=200,
+                    depth=5,
+                    learning_rate=0.05,
+                    l2_leaf_reg=3,
+                    class_weights=[1, scale_pos_weight] if not use_class_balancing or not SMOTE_AVAILABLE else None,
+                    random_state=self.config.RANDOM_STATE,
+                    verbose=False,
+                    thread_count=-1
+                )
+                cat_model.fit(X_train_scaled, y_train)
+                estimators.append(('cat', cat_model))
+                weights.append(0.15)
+                self.logger.info("CatBoost added to ensemble", category="ml_training")
+            
+            # Normalize weights
+            weights = [w / sum(weights) for w in weights]
+            
             # Create ensemble
             ensemble = VotingClassifier(
-                estimators=[
-                    ('xgb', xgb_model),
-                    ('rf', rf_model)
-                ],
+                estimators=estimators,
                 voting='soft',
-                weights=[self.config.XGBOOST_WEIGHT, self.config.RANDOM_FOREST_WEIGHT]
+                weights=weights
             )
             ensemble.fit(X_train_scaled, y_train)
+            
+            self.logger.info(
+                f"Ensemble created with {len(estimators)} models: {[name for name, _ in estimators]}",
+                category="ml_training"
+            )
             
             # Evaluate
             train_score = ensemble.score(X_train_scaled, y_train)
