@@ -102,7 +102,23 @@ This prevents the bot from forcefully disconnecting an existing MT5 terminal con
 
 ## Testing Steps
 
-1. Close MT5 terminal completely
+### Quick Test (Command Line)
+
+Run the test script to verify the fix:
+
+```bash
+python test_connection_fix.py
+```
+
+You should see:
+```
+✅ SUCCESS! Connected as 211744072 on ExnessKE-MT5Trial9
+✅ TEST PASSED - Connection fix working correctly!
+```
+
+### Full Test (Streamlit App)
+
+1. Close MT5 terminal completely (if running)
 2. Run the bot: `streamlit run app.py`
 3. Go to Settings → MT5 Connection
 4. Click **🔌 CONNECT**
@@ -110,6 +126,14 @@ This prevents the bot from forcefully disconnecting an existing MT5 terminal con
    ```
    ✅ Connected as 211744072 on ExnessKE-MT5Trial9
    ```
+
+### Test with Running MT5 Terminal
+
+1. Open MT5 terminal manually
+2. Login to account: `211744072` @ `ExnessKE-MT5Trial9`
+3. Run the bot: `streamlit run app.py`
+4. The bot should detect and reuse your existing connection
+5. Your MT5 terminal should remain connected (no disconnection!)
 
 ## Troubleshooting
 
@@ -133,7 +157,9 @@ If you still see issues:
 
 ## Files Modified
 
-- ✅ `mt5_connector.py` - Fixed initialization logic
+- ✅ `mt5_connector.py` - Fixed initialization logic (main connector)
+- ✅ `src/mt5/connection.py` - Fixed initialization logic (legacy connector)
+- ✅ `test_connection_fix.py` - Created test script to verify fix
 
 ## Next Steps
 
