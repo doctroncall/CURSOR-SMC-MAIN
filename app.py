@@ -37,6 +37,9 @@ from gui.components.live_logs import (
     render_live_logs, render_module_status, render_activity_feed,
     render_debug_console, update_module_status, add_activity, log_to_console
 )
+from gui.components.connection_panel import (
+    render_connection_panel, render_connection_widget, get_mt5_connector
+)
 
 # Initialize logging
 setup_logging()
@@ -122,7 +125,10 @@ def main():
     # Header
     st.markdown('<h1 class="main-header">🎯 MT5 Sentiment Analysis Bot</h1>', unsafe_allow_html=True)
     
-    # Live metrics ticker at the top
+    # Connection status widget at top
+    render_connection_widget()
+    
+    # Live metrics ticker
     render_live_metrics_ticker()
     
     # Initialize components
@@ -201,15 +207,22 @@ def main():
                 log_to_console("=== Starting Analysis ===", "INFO")
                 add_activity("Analysis started", "🔍", "info")
                 
-                # MT5 Connection
-                update_module_status('mt5_connection', 'running', 'Connecting to MT5...')
-                log_to_console("Attempting MT5 connection...", "INFO")
+                # MT5 Connection - use new connector
+                update_module_status('mt5_connection', 'running', 'Checking MT5 connection...')
+                log_to_console("Checking MT5 connection...", "INFO")
                 
-                with st.spinner("Connecting to MT5..."):
+                # Get connector from session state
+                connector = get_mt5_connector()
+                
+                if not connector.is_connected():
+                    st.error("❌ MT5 not connected. Please connect in Settings → MT5 Connection")
+                    add_activity("Analysis failed: MT5 not connected", "❌", "error")
+                    log_to_console("MT5 not connected - user must connect manually", "ERROR")
+                    return
+                
+                with st.spinner("Using MT5 connection..."):
+                    # Use old connection for data fetcher compatibility
                     connection = get_mt5_connection()
-                    if not connection.is_connected():
-                        log_to_console("Not connected, attempting to connect...", "DEBUG")
-                        connection.connect()
                     data_fetcher = MT5DataFetcher(connection)
                     
                 update_module_status('mt5_connection', 'success', 'Connected successfully')
@@ -466,8 +479,11 @@ def main():
         ])
         
         with settings_tab1:
-            st.markdown("### MT5 Connection Settings")
+            # Use new connection panel
+            render_connection_panel()
+            
             st.markdown("---")
+            st.markdown("### Advanced MT5 Settings")
             render_mt5_settings()
         
         with settings_tab2:
