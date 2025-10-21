@@ -311,14 +311,14 @@ class HealthMonitor:
     
     def perform_health_check(
         self,
-        connection=None,
+        connector=None,
         repository=None
     ) -> Dict[str, Any]:
         """
         Perform comprehensive health check
         
         Args:
-            connection: MT5Connection instance (optional)
+            connector: MT5Connector instance from mt5_connector.py (optional)
             repository: DatabaseRepository instance (optional)
             
         Returns:
@@ -329,7 +329,7 @@ class HealthMonitor:
             
             # Check all components
             system_health = self.check_system_resources()
-            mt5_health = self.check_mt5_connection(connection)
+            mt5_health = self.check_mt5_connection(connector)
             pipeline_health = self.check_data_pipeline(repository)
             model_health = self.check_ml_model(repository)
             
