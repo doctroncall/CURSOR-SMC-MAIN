@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 REM =============================================
 REM SMC Bot - Main Orchestrator
 REM Simple and Direct - Anaconda Environment
@@ -12,17 +13,49 @@ echo.
 
 REM Step 1: Check if conda is installed
 echo [1/5] Checking Conda installation...
+
+REM Try basic check first
 where conda >nul 2>&1
-if errorlevel 1 (
-    echo [ERROR] Conda not found!
-    echo.
-    echo Please install Anaconda or Miniconda from:
-    echo   https://www.anaconda.com/download
-    echo.
-    pause
-    exit /b 1
+if not errorlevel 1 (
+    echo [OK] Conda is installed
+    goto :conda_found
 )
-echo [OK] Conda is installed
+
+REM If 'where' fails, try to find conda in standard locations
+set "CONDA_FOUND="
+if exist "%USERPROFILE%\anaconda3\Scripts\conda.exe" set "CONDA_FOUND=1"
+if exist "%USERPROFILE%\miniconda3\Scripts\conda.exe" set "CONDA_FOUND=1"
+if exist "%ProgramData%\anaconda3\Scripts\conda.exe" set "CONDA_FOUND=1"
+if exist "%ProgramData%\miniconda3\Scripts\conda.exe" set "CONDA_FOUND=1"
+if exist "C:\ProgramData\Anaconda3\Scripts\conda.exe" set "CONDA_FOUND=1"
+if exist "C:\ProgramData\Miniconda3\Scripts\conda.exe" set "CONDA_FOUND=1"
+
+if defined CONDA_FOUND (
+    echo [OK] Conda is installed but not in PATH
+    echo [INFO] Attempting to initialize conda...
+    
+    REM Try to get conda base and add to PATH temporarily
+    for /f "tokens=*" %%i in ('conda info --base 2^>nul') do (
+        set "PATH=%%i\Scripts;%%i\Library\bin;!PATH!"
+    )
+    goto :conda_found
+)
+
+REM If still not found, show error
+echo [ERROR] Conda not found!
+echo.
+echo Please install Anaconda or Miniconda from:
+echo   https://www.anaconda.com/download
+echo.
+echo After installation:
+echo   1. Restart your command prompt
+echo   2. Run: conda init cmd.exe
+echo   3. Run this script again
+echo.
+pause
+exit /b 1
+
+:conda_found
 echo.
 
 REM Step 2: Check if environment exists, create if needed
@@ -121,3 +154,5 @@ echo.
 echo To restart: Run "conda smc.bat" again
 echo.
 pause
+
+endlocal
