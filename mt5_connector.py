@@ -145,16 +145,10 @@ class MT5Connector:
         MT5Connector._initialization_lock = True
         
         try:
-            # Try with path first
+            # Try with path first - IMPORTANT: Initialize with path ONLY, login separately
             if self.path and Path(self.path).exists():
                 print(f"   Trying path: {self.path}")
-                success = mt5.initialize(
-                    path=self.path,
-                    login=self.login,
-                    password=self.password,
-                    server=self.server,
-                    timeout=self.timeout
-                )
+                success = mt5.initialize(path=self.path, timeout=self.timeout)
             else:
                 # Try common paths
                 print(f"   Configured path not found, searching...")
@@ -167,19 +161,13 @@ class MT5Connector:
                 for path in common_paths:
                     if Path(path).exists():
                         print(f"   Found MT5 at: {path}")
-                        success = mt5.initialize(
-                            path=path,
-                            login=self.login,
-                            password=self.password,
-                            server=self.server,
-                            timeout=self.timeout
-                        )
+                        success = mt5.initialize(path=path, timeout=self.timeout)
                         found = True
                         break
                 
                 if not found:
                     print(f"   No MT5 found in common locations, trying default...")
-                    success = mt5.initialize()
+                    success = mt5.initialize(timeout=self.timeout)
         finally:
             # Release lock
             MT5Connector._initialization_lock = False
