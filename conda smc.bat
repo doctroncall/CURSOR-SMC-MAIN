@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 REM =============================================
 REM SMC Bot - Main Orchestrator
 REM Simple and Direct - Anaconda Environment
@@ -12,17 +13,83 @@ echo.
 
 REM Step 1: Check if conda is installed
 echo [1/5] Checking Conda installation...
+
+REM Try basic check first
 where conda >nul 2>&1
-if errorlevel 1 (
-    echo [ERROR] Conda not found!
-    echo.
-    echo Please install Anaconda or Miniconda from:
-    echo   https://www.anaconda.com/download
-    echo.
-    pause
-    exit /b 1
+if not errorlevel 1 (
+    echo [OK] Conda is installed
+    goto :conda_found
 )
-echo [OK] Conda is installed
+
+REM If 'where' fails, try to find conda in standard locations and add to PATH
+set "CONDA_FOUND="
+set "CONDA_PATH="
+
+REM Check common installation locations
+if exist "%USERPROFILE%\anaconda3\Scripts\conda.exe" (
+    set "CONDA_FOUND=1"
+    set "CONDA_PATH=%USERPROFILE%\anaconda3"
+)
+if exist "%USERPROFILE%\miniconda3\Scripts\conda.exe" (
+    set "CONDA_FOUND=1"
+    set "CONDA_PATH=%USERPROFILE%\miniconda3"
+)
+if exist "%ProgramData%\anaconda3\Scripts\conda.exe" (
+    set "CONDA_FOUND=1"
+    set "CONDA_PATH=%ProgramData%\anaconda3"
+)
+if exist "%ProgramData%\miniconda3\Scripts\conda.exe" (
+    set "CONDA_FOUND=1"
+    set "CONDA_PATH=%ProgramData%\miniconda3"
+)
+if exist "C:\ProgramData\Anaconda3\Scripts\conda.exe" (
+    set "CONDA_FOUND=1"
+    set "CONDA_PATH=C:\ProgramData\Anaconda3"
+)
+if exist "C:\ProgramData\Miniconda3\Scripts\conda.exe" (
+    set "CONDA_FOUND=1"
+    set "CONDA_PATH=C:\ProgramData\Miniconda3"
+)
+
+if defined CONDA_FOUND (
+    echo [OK] Conda is installed but not in PATH
+    echo [INFO] Adding conda to PATH temporarily...
+    
+    REM Add conda to PATH for this session
+    if defined CONDA_PATH (
+        set "PATH=!CONDA_PATH!\Scripts;!CONDA_PATH!\Library\bin;!CONDA_PATH!;!PATH!"
+        echo [OK] Using conda from: !CONDA_PATH!
+    )
+    goto :conda_found
+)
+
+REM Last resort: Try user's specific Anaconda installation
+if exist "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Anaconda (anaconda3)" (
+    REM This is likely a shortcut location, try to find actual installation
+    if exist "%PROGRAMDATA%\anaconda3\Scripts\conda.exe" (
+        set "CONDA_FOUND=1"
+        set "CONDA_PATH=%PROGRAMDATA%\anaconda3"
+        set "PATH=!CONDA_PATH!\Scripts;!CONDA_PATH!\Library\bin;!CONDA_PATH!;!PATH!"
+        echo [OK] Found Anaconda installation
+        goto :conda_found
+    )
+)
+
+REM If still not found, show error
+echo [ERROR] Conda not found!
+echo.
+echo Please install Anaconda or Miniconda from:
+echo   https://www.anaconda.com/download
+echo.
+echo After installation:
+echo   1. Restart your command prompt
+echo   2. Run: conda init cmd.exe
+echo   3. Run this script again
+echo.
+pause
+exit /b 1
+
+:conda_found
 echo.
 
 REM Step 2: Check if environment exists, create if needed
@@ -121,3 +188,5 @@ echo.
 echo To restart: Run "conda smc.bat" again
 echo.
 pause
+
+endlocal
