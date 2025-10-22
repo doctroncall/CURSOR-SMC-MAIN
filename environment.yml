@@ -1,4 +1,4 @@
-name: smc bot
+name: smc_bot
 channels:
   - conda-forge
   - defaults
