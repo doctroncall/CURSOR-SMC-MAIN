@@ -1,24 +1,46 @@
 #!/bin/bash
 # ========================================
 # MT5 Sentiment Analysis Bot Launcher
+# Enhanced Python Stable Version
 # For Linux/Mac users
 # ========================================
 # This script handles all setup and starts the bot automatically
 
+set -e  # Exit on error (we'll handle errors manually where needed)
+
 echo ""
 echo "========================================"
-echo "MT5 Sentiment Analysis Bot"
+echo "MT5 Sentiment Analysis Bot (Python)"
 echo "========================================"
 echo ""
 
-# Check if Python is installed
+# Check if Python 3 is installed
 if ! command -v python3 &> /dev/null; then
     echo "[ERROR] Python 3 is not installed"
+    echo ""
     echo "Please install Python 3.10+ from https://www.python.org/downloads/"
+    echo ""
+    echo "On Ubuntu/Debian: sudo apt-get install python3 python3-pip python3-venv"
+    echo "On macOS: brew install python3"
+    echo ""
     exit 1
 fi
 
-echo "[OK] Python found"
+# Get Python version
+PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
+echo "[OK] Python found - Version $PYTHON_VERSION"
+
+# Extract major and minor version
+PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+# Check if Python version is 3.10 or higher
+if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]); then
+    echo "[ERROR] Python 3.10+ required. Current version: $PYTHON_VERSION"
+    echo "Please upgrade Python from https://www.python.org/downloads/"
+    exit 1
+fi
+
 echo ""
 
 # Check if virtual environment exists

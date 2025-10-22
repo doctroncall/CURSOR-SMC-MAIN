@@ -55,13 +55,23 @@ echo.
 REM Check if virtual environment exists
 if not exist "venv\" (
     echo [SETUP] Creating virtual environment...
+    echo This may take a minute...
     python -m venv venv
     if errorlevel 1 (
         echo [ERROR] Failed to create virtual environment
+        echo.
+        echo Troubleshooting:
+        echo 1. Ensure you have write permissions in this directory
+        echo 2. Try running as Administrator
+        echo 3. Check if antivirus is blocking the operation
+        echo.
         pause
         exit /b 1
     )
-    echo [OK] Virtual environment created
+    echo [OK] Virtual environment created successfully
+    echo.
+) else (
+    echo [OK] Virtual environment already exists
 )
 
 REM Activate virtual environment
@@ -69,19 +79,30 @@ echo [SETUP] Activating virtual environment...
 call venv\Scripts\activate.bat
 if errorlevel 1 (
     echo [ERROR] Failed to activate virtual environment
+    echo.
+    echo The venv folder may be corrupted. Solutions:
+    echo 1. Delete the 'venv' folder and run this script again
+    echo 2. Check folder permissions
+    echo.
     pause
     exit /b 1
 )
 
 echo [OK] Virtual environment activated
+echo Using: !VIRTUAL_ENV!
 echo.
 
 REM Check if dependencies are installed
 echo [SETUP] Checking dependencies...
 pip show streamlit >nul 2>&1
 if errorlevel 1 (
-    echo [SETUP] Installing dependencies this may take a few minutes...
+    echo [SETUP] Installing dependencies - this may take 5-10 minutes...
+    echo Please be patient, do not close this window.
     echo.
+    
+    REM Upgrade pip first for better stability
+    echo [SETUP] Upgrading pip to latest version...
+    python -m pip install --upgrade pip >nul 2>&1
     
     REM Try to install TA-Lib first
     echo [SETUP] Attempting to install TA-Lib...
@@ -104,13 +125,15 @@ if errorlevel 1 (
             echo.
             echo Please try ONE of these options:
             echo.
-            echo OPTION 1 - Try manual install:
-            echo   pip install Ta-lib
-            echo.
-            echo OPTION 2 - Download wheel file:
+            echo OPTION 1 - Download wheel file (RECOMMENDED):
             echo   1. Go to: https://github.com/cgohlke/talib-build/releases
-            echo   2. Download the .whl file for Python 3.13
+            echo   2. Download the .whl file matching your Python version
+            echo      Example for Python 3.10: TA_Lib-0.4.XX-cp310-cp310-win_amd64.whl
+            echo      Example for Python 3.11: TA_Lib-0.4.XX-cp311-cp311-win_amd64.whl
             echo   3. Run: pip install path\to\downloaded-file.whl
+            echo.
+            echo OPTION 2 - Try manual install:
+            echo   pip install Ta-lib
             echo.
             echo After installation, run this script again.
             echo.
@@ -118,18 +141,26 @@ if errorlevel 1 (
             exit /b 1
         )
     )
-    echo [OK] TA-Lib installed
+    echo [OK] TA-Lib installed successfully
     
     echo [SETUP] Installing remaining Python packages...
-    pip install -r requirements.txt
+    echo Progress: Installing scientific computing packages...
+    pip install -r requirements.txt --no-cache-dir
     if errorlevel 1 (
         echo [ERROR] Failed to install dependencies
+        echo.
+        echo Troubleshooting:
+        echo 1. Check your internet connection
+        echo 2. Try running: pip install -r requirements.txt
+        echo 3. Check the error messages above
+        echo.
         pause
         exit /b 1
     )
-    echo [OK] All dependencies installed
+    echo [OK] All dependencies installed successfully
 ) else (
     echo [OK] Dependencies already installed
+    echo [INFO] To update dependencies, delete the venv folder and run this script again
 )
 
 echo.
@@ -165,16 +196,26 @@ if not exist ".env" (
 echo [OK] Configuration file found
 echo.
 
-REM Create data directory if it doesn't exist
+REM Create necessary directories if they don't exist
+echo [SETUP] Checking directory structure...
 if not exist "data" mkdir data
+if not exist "logs" mkdir logs
+if not exist "models" mkdir models
+if not exist "reports" mkdir reports
+echo [OK] Directory structure ready
 
 REM Check if database needs initialization
 if not exist "data\mt5_sentiment.db" (
     echo [SETUP] Initializing database...
     python -c "from src.database.models import init_database; init_database(); print('[OK] Database initialized')" 2>nul
     if errorlevel 1 (
-        echo [WARNING] Database initialization failed will retry on first run
+        echo [WARNING] Database initialization failed - will retry on first run
+        echo This is normal if dependencies were just installed
+    ) else (
+        echo [OK] Database initialized successfully
     )
+) else (
+    echo [OK] Database already initialized
 )
 
 echo.
@@ -182,16 +223,33 @@ echo ========================================
 echo Starting MT5 Sentiment Analysis Bot...
 echo ========================================
 echo.
-echo Dashboard will open in your browser automatically
-echo Press Ctrl+C to stop the bot
+echo [INFO] Starting Python-based Streamlit application
+echo [INFO] Dashboard will open in your browser automatically
+echo [INFO] Press Ctrl+C to stop the bot
+echo.
+echo Launching...
 echo.
 
-REM Start Streamlit with the app
-streamlit run app.py
+REM Start Streamlit with the app and better error handling
+streamlit run app.py --server.headless=true --server.port=8501
+set STREAMLIT_EXIT_CODE=%errorlevel%
 
 REM If Streamlit exits, show message
 echo.
 echo ========================================
 echo Bot stopped
 echo ========================================
+
+if %STREAMLIT_EXIT_CODE% NEQ 0 (
+    echo.
+    echo [WARNING] Application exited with error code: %STREAMLIT_EXIT_CODE%
+    echo Check the logs folder for error details
+    echo.
+)
+
+echo.
+echo To restart the bot, run this script again.
+echo.
 pause
+
+endlocal
