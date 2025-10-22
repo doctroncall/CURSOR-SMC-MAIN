@@ -11,7 +11,7 @@ echo      SMC BOT - ANACONDA LAUNCHER
 echo =============================================
 echo.
 
-REM Step 1: Check if conda is installed
+REM Step 1: Check if conda is installed and initialized
 echo [1/5] Checking Conda installation...
 
 REM Try basic check first
@@ -93,46 +93,109 @@ exit /b 1
 echo.
 
 REM Step 2: Check if environment exists, create if needed
-echo [2/5] Checking conda environment "smc bot"...
-conda env list | findstr /C:"smc bot" >nul 2>&1
-if errorlevel 1 (
-    echo [INFO] Environment "smc bot" not found - creating now...
-    echo [INFO] This will take a few minutes...
-    echo.
-    
-    if not exist "environment.yml" (
-        echo [ERROR] environment.yml not found!
-        echo Please ensure you're in the bot directory
-        pause
-        exit /b 1
-    )
-    
-    REM Create environment with custom name
-    conda env create -f environment.yml -n "smc bot"
-    if errorlevel 1 (
-        echo [ERROR] Failed to create environment!
-        echo Try: conda clean --all
-        echo Then run this script again
-        pause
-        exit /b 1
-    )
-    echo [OK] Environment created successfully
-) else (
-    echo [OK] Environment "smc bot" already exists
+echo [2/5] Checking conda environment smc_bot...
+
+REM Use consistent environment name (no spaces)
+set "ENV_NAME=smc_bot"
+
+REM Improved environment detection - check if we can activate it
+call conda activate %ENV_NAME% >nul 2>&1
+if not errorlevel 1 (
+    echo [OK] Environment %ENV_NAME% exists and can be activated
+    goto :env_ready
 )
+
+REM Alternative detection method - look for environment in list
+echo [INFO] Checking environment list...
+conda env list > temp_env_list.txt 2>&1
+findstr /r /c:"%ENV_NAME%" temp_env_list.txt >nul 2>&1
+if not errorlevel 1 (
+    echo [OK] Environment %ENV_NAME% found in environment list
+    del temp_env_list.txt
+    goto :env_exists_but_not_initialized
+)
+del temp_env_list.txt
+
+REM If we get here, environment doesn't exist
+echo [INFO] Environment "%ENV_NAME%" not found - creating now...
+echo [INFO] This will take a few minutes...
 echo.
 
-REM Step 3: Activate the environment
-echo [3/5] Activating conda environment...
-call conda activate "smc bot"
-if errorlevel 1 (
-    echo [ERROR] Failed to activate environment!
-    echo Try: conda init cmd.exe
-    echo Then restart your terminal and try again
+if not exist "environment.yml" (
+    echo [ERROR] environment.yml not found!
+    echo Please ensure you're in the bot directory
     pause
     exit /b 1
 )
-echo [OK] Environment activated
+
+REM Create environment with consistent name
+conda env create -f environment.yml -n %ENV_NAME%
+if errorlevel 1 (
+    echo [ERROR] Failed to create environment!
+    echo [INFO] This might be because the environment already exists with a different name
+    echo [INFO] Checking for existing environments...
+    conda env list
+    echo.
+    echo [INFO] Try: conda env remove -n %ENV_NAME%
+    echo Then run this script again
+    pause
+    exit /b 1
+)
+echo [OK] Environment created successfully
+goto :env_ready
+
+:env_exists_but_not_initialized
+echo [OK] Environment %ENV_NAME% exists but conda not initialized
+echo [INFO] Attempting to activate using full path...
+
+REM Find the actual path to the environment
+for /f "tokens=1,2" %%i in ('conda env list ^| findstr "%ENV_NAME%"') do (
+    if "%%i"=="%ENV_NAME%" (
+        set "ENV_PATH=%%j"
+        goto :activate_by_path
+    )
+)
+
+REM If we can't find the path, try standard locations
+echo [INFO] Trying standard environment locations...
+if exist "C:\Users\bnria\.conda\envs\%ENV_NAME%" (
+    set "ENV_PATH=C:\Users\bnria\.conda\envs\%ENV_NAME%"
+    goto :activate_by_path
+)
+if exist "C:\ProgramData\Anaconda3\envs\%ENV_NAME%" (
+    set "ENV_PATH=C:\ProgramData\Anaconda3\envs\%ENV_NAME%"
+    goto :activate_by_path
+)
+if exist "C:\ProgramData\anaconda3\envs\%ENV_NAME%" (
+    set "ENV_PATH=C:\ProgramData\anaconda3\envs\%ENV_NAME%"
+    goto :activate_by_path
+)
+
+echo [ERROR] Could not determine environment path!
+echo [INFO] Please run 'conda init cmd.exe' and restart your terminal
+pause
+exit /b 1
+
+:activate_by_path
+echo [INFO] Activating environment using path: !ENV_PATH!
+set "PATH=!ENV_PATH!;!ENV_PATH!\Scripts;!ENV_PATH!\Library\bin;!PATH!"
+set "CONDA_PREFIX=!ENV_PATH!"
+set "CONDA_DEFAULT_ENV=!ENV_NAME!"
+goto :env_ready
+
+:env_ready
+echo.
+
+REM Step 3: Verify Python is working in the environment
+echo [3/5] Verifying Python environment...
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Python not accessible in environment!
+    echo [INFO] Please run 'conda init cmd.exe' and restart your terminal
+    pause
+    exit /b 1
+)
+python -c "import sys; print('[OK] Python version: ' + sys.version.split()[0])" 2>nul
 echo.
 
 REM Step 4: Verify and install dependencies
@@ -142,7 +205,8 @@ REM Check critical packages
 python -c "import streamlit" >nul 2>&1
 if errorlevel 1 (
     echo [INFO] Installing missing packages...
-    conda env update -f environment.yml -n "smc bot"
+    REM Use the correct environment name for update
+    conda env update -f environment.yml -n %ENV_NAME%
 )
 
 python -c "import talib" >nul 2>&1
