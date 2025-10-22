@@ -2,7 +2,6 @@
 MT5 Data Fetcher
 Retrieves OHLCV and tick data from MetaTrader 5 with validation and error handling
 """
-import MetaTrader5 as mt5
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -13,30 +12,49 @@ from .connection import MT5Connection, ensure_connection, MT5ConnectionError
 from .validator import DataValidator
 from config.settings import DataConfig
 
+# Lazy import of MetaTrader5 to prevent import errors on startup
+mt5 = None
+
+def _ensure_mt5_imported():
+    """Lazy import MetaTrader5 module"""
+    global mt5
+    if mt5 is None:
+        try:
+            import MetaTrader5 as _mt5
+            mt5 = _mt5
+        except ImportError as e:
+            raise ImportError(
+                "MetaTrader5 package is not installed or not available on this platform. "
+                "Please install it using: pip install MetaTrader5\n"
+                "Note: MetaTrader5 only works on Windows."
+            ) from e
+    return mt5
+
 
 class Timeframe(Enum):
     """MT5 Timeframe enumeration"""
-    M1 = mt5.TIMEFRAME_M1
-    M2 = mt5.TIMEFRAME_M2
-    M3 = mt5.TIMEFRAME_M3
-    M4 = mt5.TIMEFRAME_M4
-    M5 = mt5.TIMEFRAME_M5
-    M6 = mt5.TIMEFRAME_M6
-    M10 = mt5.TIMEFRAME_M10
-    M12 = mt5.TIMEFRAME_M12
-    M15 = mt5.TIMEFRAME_M15
-    M20 = mt5.TIMEFRAME_M20
-    M30 = mt5.TIMEFRAME_M30
-    H1 = mt5.TIMEFRAME_H1
-    H2 = mt5.TIMEFRAME_H2
-    H3 = mt5.TIMEFRAME_H3
-    H4 = mt5.TIMEFRAME_H4
-    H6 = mt5.TIMEFRAME_H6
-    H8 = mt5.TIMEFRAME_H8
-    H12 = mt5.TIMEFRAME_H12
-    D1 = mt5.TIMEFRAME_D1
-    W1 = mt5.TIMEFRAME_W1
-    MN1 = mt5.TIMEFRAME_MN1
+    # These will be set after MT5 is imported
+    M1 = 1
+    M2 = 2
+    M3 = 3
+    M4 = 4
+    M5 = 5
+    M6 = 6
+    M10 = 10
+    M12 = 12
+    M15 = 15
+    M20 = 20
+    M30 = 30
+    H1 = 16385
+    H2 = 16386
+    H3 = 16387
+    H4 = 16388
+    H6 = 16390
+    H8 = 16392
+    H12 = 16396
+    D1 = 16408
+    W1 = 32769
+    MN1 = 49153
     
     @classmethod
     def from_string(cls, timeframe_str: str) -> 'Timeframe':
@@ -90,7 +108,11 @@ class MT5DataFetcher:
         
         # Check if MT5 is initialized
         if connection is None:
-            terminal_info = mt5.terminal_info()
+            try:
+                _mt5 = _ensure_mt5_imported()
+                terminal_info = _mt5.terminal_info()
+            except ImportError:
+                terminal_info = None
             print(f"[DEBUG]   Global MT5 terminal_info = {terminal_info}")
             if terminal_info:
                 print(f"[DEBUG]   ✓ MT5 globally initialized")
@@ -119,7 +141,8 @@ class MT5DataFetcher:
             Optional[Dict]: Symbol information or None if failed
         """
         try:
-            info = mt5.symbol_info(symbol)
+            _mt5 = _ensure_mt5_imported()
+            info = _mt5.symbol_info(symbol)
             if info is None:
                 return None
             
@@ -160,7 +183,8 @@ class MT5DataFetcher:
             Optional[Dict]: Latest tick data or None
         """
         try:
-            tick = mt5.symbol_info_tick(symbol)
+            _mt5 = _ensure_mt5_imported()
+            tick = _mt5.symbol_info_tick(symbol)
             if tick is None:
                 return None
             
@@ -205,10 +229,11 @@ class MT5DataFetcher:
         
         try:
             # Check MT5 connection first
-            terminal_info = mt5.terminal_info()
+            _mt5 = _ensure_mt5_imported()
+            terminal_info = _mt5.terminal_info()
             print(f"[DEBUG]   MT5 terminal_info: {terminal_info is not None}")
             if not terminal_info:
-                print(f"[DEBUG]   ✗ MT5 NOT CONNECTED - Error: {mt5.last_error()}")
+                print(f"[DEBUG]   ✗ MT5 NOT CONNECTED - Error: {_mt5.last_error()}")
                 self.stats["failed_requests"] += 1
                 return None
             
@@ -236,11 +261,11 @@ class MT5DataFetcher:
                 symbol = correct_symbol
             
             # Check if symbol needs to be selected
-            info = mt5.symbol_info(symbol)
+            info = _mt5.symbol_info(symbol)
             if info is None or not info.visible:
                 print(f"[DEBUG]   Symbol {symbol} not visible. Attempting to select...")
-                if not mt5.symbol_select(symbol, True):
-                    error = mt5.last_error()
+                if not _mt5.symbol_select(symbol, True):
+                    error = _mt5.last_error()
                     print(f"[DEBUG]   ✗ SYMBOL SELECT FAILED - MT5 Error: {error}")
                     print(f"[DEBUG]   This usually means the symbol is not available in your broker's Market Watch")
                     print(f"[DEBUG]   Please check if the symbol exists in your MT5 terminal")
@@ -257,16 +282,16 @@ class MT5DataFetcher:
             # Get data
             print(f"[DEBUG]   Calling mt5.copy_rates_from_pos({symbol}, {tf.value}, 0, {count})")
             if start_date and end_date:
-                rates = mt5.copy_rates_range(symbol, tf.value, start_date, end_date)
+                rates = _mt5.copy_rates_range(symbol, tf.value, start_date, end_date)
             elif start_date:
-                rates = mt5.copy_rates_from(symbol, tf.value, start_date, count)
+                rates = _mt5.copy_rates_from(symbol, tf.value, start_date, count)
             else:
-                rates = mt5.copy_rates_from_pos(symbol, tf.value, 0, count)
+                rates = _mt5.copy_rates_from_pos(symbol, tf.value, 0, count)
             
             print(f"[DEBUG]   Result type: {type(rates)}, Length: {len(rates) if rates is not None else 0}")
             
             if rates is None or len(rates) == 0:
-                error = mt5.last_error()
+                error = _mt5.last_error()
                 print(f"[DEBUG]   ✗ FETCH FAILED - MT5 Error: {error}")
                 self.stats["failed_requests"] += 1
                 return None
@@ -324,7 +349,7 @@ class MT5DataFetcher:
         start_date: datetime,
         end_date: Optional[datetime] = None,
         count: int = 10000,
-        flags: int = mt5.COPY_TICKS_ALL
+        flags: Optional[int] = None
     ) -> Optional[pd.DataFrame]:
         """
         Get tick data for a symbol
@@ -342,10 +367,14 @@ class MT5DataFetcher:
         self.stats["total_requests"] += 1
         
         try:
+            _mt5 = _ensure_mt5_imported()
+            if flags is None:
+                flags = _mt5.COPY_TICKS_ALL
+            
             if end_date:
-                ticks = mt5.copy_ticks_range(symbol, start_date, end_date, flags)
+                ticks = _mt5.copy_ticks_range(symbol, start_date, end_date, flags)
             else:
-                ticks = mt5.copy_ticks_from(symbol, start_date, count, flags)
+                ticks = _mt5.copy_ticks_from(symbol, start_date, count, flags)
             
             if ticks is None or len(ticks) == 0:
                 self.stats["failed_requests"] += 1
@@ -405,14 +434,15 @@ class MT5DataFetcher:
             Optional[str]: Exact or closest matching symbol name, or None
         """
         try:
+            _mt5 = _ensure_mt5_imported()
             # First try exact match
-            info = mt5.symbol_info(symbol)
+            info = _mt5.symbol_info(symbol)
             if info is not None:
                 return symbol
             
             # Try to find similar symbols
             print(f"[DEBUG]   Searching for symbols matching '{symbol}'...")
-            all_symbols = mt5.symbols_get()
+            all_symbols = _mt5.symbols_get()
             if all_symbols is None:
                 return None
             
@@ -457,7 +487,8 @@ class MT5DataFetcher:
             List[str]: List of symbol names
         """
         try:
-            symbols = mt5.symbols_get(group)
+            _mt5 = _ensure_mt5_imported()
+            symbols = _mt5.symbols_get(group)
             if symbols is None:
                 return []
             return [s.name for s in symbols if s.visible]

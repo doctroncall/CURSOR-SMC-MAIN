@@ -2,12 +2,30 @@
 MT5 Connection Manager
 Handles secure connection to MetaTrader 5 with auto-reconnection and health monitoring
 """
-import MetaTrader5 as mt5
 from datetime import datetime
 from typing import Optional, Dict, Any
 from pathlib import Path
 import time
 from functools import wraps
+
+# Lazy import of MetaTrader5 to prevent import errors on startup
+# MT5 is only available on Windows and should only be imported when actually used
+mt5 = None
+
+def _ensure_mt5_imported():
+    """Lazy import MetaTrader5 module"""
+    global mt5
+    if mt5 is None:
+        try:
+            import MetaTrader5 as _mt5
+            mt5 = _mt5
+        except ImportError as e:
+            raise ImportError(
+                "MetaTrader5 package is not installed or not available on this platform. "
+                "Please install it using: pip install MetaTrader5\n"
+                "Note: MetaTrader5 only works on Windows."
+            ) from e
+    return mt5
 
 from config.settings import MT5Config
 
@@ -99,6 +117,9 @@ class MT5Connection:
         Raises:
             MT5ConnectionError: If connection fails after retries
         """
+        # Ensure MT5 is imported
+        _mt5 = _ensure_mt5_imported()
+        
         # Validate credentials first
         if not self._validate_credentials():
             print(f"❌ Credential validation failed: {self._last_error}")
@@ -110,7 +131,7 @@ class MT5Connection:
                 
                 # Initialize MT5 WITH credentials
                 if self.path:
-                    if not mt5.initialize(
+                    if not _mt5.initialize(
                         path=self.path,
                         login=self.login,
                         password=self.password,
@@ -118,18 +139,18 @@ class MT5Connection:
                         timeout=self.timeout,
                         portable=self.portable
                     ):
-                        raise MT5ConnectionError(f"MT5 initialization failed: {mt5.last_error()}")
+                        raise MT5ConnectionError(f"MT5 initialization failed: {_mt5.last_error()}")
                 else:
-                    if not mt5.initialize(
+                    if not _mt5.initialize(
                         login=self.login,
                         password=self.password,
                         server=self.server,
                         timeout=self.timeout
                     ):
-                        raise MT5ConnectionError(f"MT5 initialization failed: {mt5.last_error()}")
+                        raise MT5ConnectionError(f"MT5 initialization failed: {_mt5.last_error()}")
                 
                 # Verify connection
-                account_info = mt5.account_info()
+                account_info = _mt5.account_info()
                 if account_info is None:
                     raise MT5ConnectionError("Failed to retrieve account info")
                 
@@ -171,7 +192,8 @@ class MT5Connection:
             bool: True if disconnected successfully
         """
         try:
-            mt5.shutdown()
+            if mt5 is not None:
+                mt5.shutdown()
             self._connected = False
             return True
         except Exception as e:
@@ -199,6 +221,9 @@ class MT5Connection:
         if not self._connected:
             return False
         
+        if mt5 is None:
+            return False
+        
         try:
             # Verify connection is still alive
             account_info = mt5.account_info()
@@ -220,6 +245,9 @@ class MT5Connection:
         if not self.is_connected():
             return None
         
+        if mt5 is None:
+            return None
+        
         try:
             start = time.time()
             mt5.symbol_info_tick("EURUSD")  # Quick test request
@@ -239,6 +267,9 @@ class MT5Connection:
             Optional[Dict]: Account details or None if failed
         """
         if not self.is_connected():
+            return None
+        
+        if mt5 is None:
             return None
         
         try:
@@ -272,6 +303,9 @@ class MT5Connection:
             Optional[Dict]: Terminal details or None if failed
         """
         if not self.is_connected():
+            return None
+        
+        if mt5 is None:
             return None
         
         try:
