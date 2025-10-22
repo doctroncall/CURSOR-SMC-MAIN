@@ -1,0 +1,73 @@
+name: mt5-sentiment-bot
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Python version
+  - python=3.10
+
+  # Core packages available via conda
+  - pip
+  - numpy>=1.24.0
+  - pandas>=2.1.0
+  - scikit-learn>=1.3.0
+  - matplotlib>=3.8.0
+  - seaborn>=0.13.0
+  - sqlalchemy>=2.0.0
+  - pyyaml>=6.0
+  - requests>=2.31.0
+  - python-dateutil>=2.8.0
+  - pytz>=2023.3
+  - psutil>=5.9.0
+  - jinja2>=3.1.2
+  
+  # TA-Lib (available via conda-forge)
+  - ta-lib>=0.4.28
+  
+  # Machine Learning packages
+  - xgboost>=2.0.0
+  - lightgbm>=4.0.0
+  - tensorflow>=2.14.0
+  - joblib>=1.3.0
+  
+  # Testing
+  - pytest>=7.4.0
+  - pytest-cov>=4.1.0
+  - pytest-asyncio>=0.21.0
+  
+  # Code Quality
+  - black>=23.0.0
+  - flake8>=6.1.0
+  - mypy>=1.5.0
+  
+  # Pip-only packages
+  - pip:
+    # Streamlit (works better via pip)
+    - streamlit>=1.28.0
+    - python-dotenv>=1.0.0
+    
+    # MT5 Integration
+    - MetaTrader5>=5.0.45
+    
+    # Data Processing
+    - pandas-ta>=0.3.14b
+    
+    # Machine Learning (pip-specific versions)
+    - catboost>=1.2.0
+    - imbalanced-learn>=0.11.0
+    - optuna>=3.4.0
+    - shap>=0.43.0
+    
+    # Visualization
+    - plotly>=5.17.0
+    - kaleido>=0.2.1
+    
+    # Database
+    - alembic>=1.12.0
+    
+    # Reporting
+    - reportlab>=4.0.0
+    - PyPDF2>=3.0.0
+    
+    # Logging
+    - loguru>=0.7.0
