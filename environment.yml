@@ -1,4 +1,4 @@
-name: mt5-sentiment-bot
+name: smc bot
 channels:
   - conda-forge
   - defaults
