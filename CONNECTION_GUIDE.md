@@ -32,20 +32,13 @@ start_bot.bat  # Windows
 
 ## 🔍 **New Architecture**
 
-### **Standalone Connector: `mt5_connector.py`**
+### Connection Module
 
-**Located at project root** (not in src/)
+Use `src/mt5/connection.py` (`MT5Connection`) as the single source of truth.
 
-**Features:**
-- Simple, direct connection logic
-- Hardcoded test credentials
-- No complex dependencies
-- Easy to test independently
-- Clear step-by-step process
-
-**Test it standalone:**
+Standalone test:
 ```bash
-python mt5_connector.py
+python -c "from src.mt5.connection import MT5Connection as C; c=C(); print('Connecting...'); c.connect(); print('OK'); c.disconnect()"
 ```
 
 **Expected output:**
@@ -167,7 +160,7 @@ Server: ExnessKE-MT5Trial9     Path: C:\Program Files\MetaTr...
 
 **Stored in Streamlit session state:**
 ```python
-st.session_state.mt5_connector
+st.session_state.mt5_connection
 ```
 
 **Persists across:**
@@ -289,7 +282,7 @@ st.session_state.mt5_connector
 **Solution:**
 - Test credentials may have expired
 - Create new demo account at broker
-- Update credentials in mt5_connector.py
+- Update your environment variables (.env) consumed by `config/settings.py`
 
 ---
 
@@ -353,11 +346,9 @@ st.session_state.mt5_connector
 
 ### **Test 1: Standalone Test**
 ```bash
-cd /path/to/project
-python mt5_connector.py
+python -c "from src.mt5.connection import MT5Connection as C; c=C(); c.connect(); print(c.get_account_info()); c.disconnect()"
 ```
-
-**Should show:** Full connection sequence with success
+**Should show:** Account info and a clean disconnect
 
 ---
 
@@ -413,31 +404,17 @@ python mt5_connector.py
 
 ## 📖 **Code Examples**
 
-### **Using Connector in Code**
+### **Using Connection in Code**
 
 ```python
-from mt5_connector import get_connector
+from src.mt5.connection import get_mt5_connection
 
-# Get connector
-connector = get_connector()
-
-# Connect
-success, message = connector.connect()
-if success:
-    print("Connected!")
-else:
-    print(f"Failed: {message}")
-
-# Check status
-if connector.is_connected():
-    print("Still connected")
-
-# Get account info
-info = connector.get_account_info()
-print(f"Balance: {info['balance']}")
-
-# Disconnect
-connector.disconnect()
+conn = get_mt5_connection()
+conn.connect()
+if conn.is_connected():
+    info = conn.get_account_info()
+    print(f"Balance: {info['balance']}")
+conn.disconnect()
 ```
 
 ---
@@ -447,11 +424,8 @@ connector.disconnect()
 ```python
 from gui.components.connection_panel import get_mt5_connector
 
-# Get connector
-connector = get_mt5_connector()
-
-# Check if connected
-if connector.is_connected():
+conn = get_mt5_connector()
+if conn.is_connected():
     # Do analysis
     pass
 else:

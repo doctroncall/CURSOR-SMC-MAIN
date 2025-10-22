@@ -1,8 +1,12 @@
 # ✅ Global MT5 Access Verification
 
+> NOTE: This document contains references to the legacy `mt5_connector.py`.
+> The codebase now uses `src/mt5/connection.py` (`MT5Connection`) exclusively.
+> Replace any `mt5_connector` usage with `get_mt5_connection()`/`MT5Connection`.
+
 ## Confirmation: Full App Access Enabled
 
-This document confirms that the new `mt5_connector.py` system provides **COMPLETE GLOBAL ACCESS** to MT5 for the entire application, exactly as the previous system did.
+This document confirms that the unified `src/mt5/connection.py` (`MT5Connection`) provides complete MT5 access across the application.
 
 ---
 
@@ -29,19 +33,9 @@ mt5.initialize(...)
 ### Our Implementation
 
 ```python
-# mt5_connector.py
-class MT5Connector:
-    def connect(self):
-        # This call initializes MT5 for the ENTIRE Python process
-        success = mt5.initialize(
-            path=self.path,
-            login=self.login,
-            password=self.password,
-            server=self.server,
-            timeout=self.timeout
-        )
-        
-        # After this, MT5 is available GLOBALLY
+from src.mt5.connection import MT5Connection
+conn = MT5Connection()
+conn.connect()
 ```
 
 ---

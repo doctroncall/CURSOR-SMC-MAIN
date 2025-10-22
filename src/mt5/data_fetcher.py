@@ -41,7 +41,11 @@ class Timeframe(Enum):
     @classmethod
     def from_string(cls, timeframe_str: str) -> 'Timeframe':
         """Convert string to Timeframe enum"""
-        return cls[timeframe_str.upper()]
+        key = (timeframe_str or "").upper()
+        try:
+            return cls[key]
+        except KeyError:
+            raise ValueError(f"Invalid timeframe: {timeframe_str}")
     
     @classmethod
     def to_minutes(cls, timeframe: 'Timeframe') -> int:
@@ -172,6 +176,7 @@ class MT5DataFetcher:
             print(f"Error getting tick for {symbol}: {str(e)}")
             return None
     
+    @ensure_connection
     def get_ohlcv(
         self,
         symbol: str,
@@ -312,6 +317,7 @@ class MT5DataFetcher:
             print(f"Error fetching OHLCV for {symbol} {timeframe}: {str(e)}")
             return None
     
+    @ensure_connection
     def get_ticks(
         self,
         symbol: str,

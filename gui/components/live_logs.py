@@ -12,7 +12,7 @@ import time
 class LiveLogViewer:
     """Real-time log viewer for Streamlit"""
     
-    def __init__(self, log_file: str = "logs/mt5_bot.log"):
+    def __init__(self, log_file: str = "logs/app.log"):
         self.log_file = Path(log_file)
         self.max_lines = 100
         

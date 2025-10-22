@@ -1,31 +1,23 @@
 # 🌐 Global MT5 Access Guide
 
+> NOTE: The legacy `mt5_connector.py` has been removed. The application now uses `src/mt5/connection.py` (`MT5Connection`) everywhere. Replace any references to `mt5_connector` with `get_mt5_connection()` and pass the connection to components that need it.
+
 ## How MT5 Connection Works in This App
 
 ### Overview
 
-The `mt5_connector.py` module provides a **GLOBAL** MT5 connection that's accessible throughout the entire application. When you connect via the GUI, it initializes the MetaTrader5 library globally, making it available to ALL components.
+The app now uses a single connection manager: `src/mt5/connection.py` (`MT5Connection`). Connect via the GUI and the MetaTrader5 library is initialized for use by all components through the managed connection.
 
 ---
 
 ## 🔑 Key Concept: Global Initialization
 
-When `mt5_connector.py` calls `mt5.initialize()`, it doesn't create a "local" connection. It initializes the **MetaTrader5 Python library globally**.
+`MT5Connection.connect()` initializes the MetaTrader5 Python library and establishes an authenticated session.
 
 ```python
-# In mt5_connector.py
-import MetaTrader5 as mt5
-
-class MT5Connector:
-    def connect(self):
-        # This call initializes MT5 GLOBALLY
-        mt5.initialize(
-            path=self.path,
-            login=self.login,
-            password=self.password,
-            server=self.server
-        )
-        # Now MT5 is available everywhere!
+from src.mt5.connection import MT5Connection
+conn = MT5Connection()
+conn.connect()
 ```
 
 ### What This Means
@@ -69,21 +61,14 @@ ALL components can now use: import MetaTrader5 as mt5
 ### Component Access Pattern
 
 ```python
-# ✅ CORRECT: Components use global MT5 API
-
-# 1. Connection Panel (GUI)
-from mt5_connector import get_connector
-connector = get_connector()
-connector.connect()  # Initializes MT5 globally
-
-# 2. Data Fetcher (anywhere in app)
+# ✅ Recommended pattern
+from src.mt5.connection import get_mt5_connection
 from src.mt5.data_fetcher import MT5DataFetcher
-fetcher = MT5DataFetcher(connection=None)  # Uses global MT5 API
-df = fetcher.get_ohlcv("EURUSD", "H1", count=100)
 
-# 3. Direct MT5 usage (anywhere in app)
-import MetaTrader5 as mt5
-account = mt5.account_info()  # ✅ Works after connector.connect()
+conn = get_mt5_connection()
+conn.connect()
+fetcher = MT5DataFetcher(connection=conn)
+df = fetcher.get_ohlcv("EURUSD", "H1", count=100)
 ```
 
 ---

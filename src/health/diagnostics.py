@@ -68,10 +68,10 @@ class SystemDiagnostics:
         except Exception as e:
             tests.append({'name': 'MT5 Library Import', 'passed': False, 'error': str(e)})
         
-        # Test 2: Connection
+        # Test 2: Connection class availability
         try:
-            from mt5_connector import get_connector
-            conn = get_connector()
+            from src.mt5.connection import MT5Connection
+            _ = MT5Connection
             tests.append({'name': 'MT5 Connection Class', 'passed': True})
         except Exception as e:
             tests.append({'name': 'MT5 Connection Class', 'passed': False, 'error': str(e)})

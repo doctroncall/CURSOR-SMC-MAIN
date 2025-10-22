@@ -285,7 +285,7 @@ class DatabaseRepository:
         price_change_pips: float
     ) -> bool:
         """Update prediction with actual outcome"""
-        prediction = self.session.query(Prediction).get(prediction_id)
+        prediction = self.session.get(Prediction, prediction_id)
         if prediction:
             prediction.is_verified = True
             prediction.actual_outcome = actual_outcome
