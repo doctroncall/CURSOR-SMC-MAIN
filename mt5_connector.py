@@ -155,11 +155,16 @@ class MT5Connector:
         MT5Connector._initialization_lock = True
         
         try:
-            # Initialize MT5 WITHOUT login credentials first
-            # This prevents disconnecting an already-running MT5 terminal
+            # Initialize MT5 WITH login credentials
             if self.path and Path(self.path).exists():
                 print(f"   Trying path: {self.path}")
-                success = mt5.initialize(path=self.path, timeout=self.timeout)
+                success = mt5.initialize(
+                    path=self.path,
+                    login=self.login,
+                    password=self.password,
+                    server=self.server,
+                    timeout=self.timeout
+                )
             else:
                 # Try common paths
                 print(f"   Configured path not found, searching...")
@@ -172,13 +177,24 @@ class MT5Connector:
                 for path in common_paths:
                     if Path(path).exists():
                         print(f"   Found MT5 at: {path}")
-                        success = mt5.initialize(path=path, timeout=self.timeout)
+                        success = mt5.initialize(
+                            path=path,
+                            login=self.login,
+                            password=self.password,
+                            server=self.server,
+                            timeout=self.timeout
+                        )
                         found = True
                         break
                 
                 if not found:
                     print(f"   No MT5 found in common locations, trying default...")
-                    success = mt5.initialize()
+                    success = mt5.initialize(
+                        login=self.login,
+                        password=self.password,
+                        server=self.server,
+                        timeout=self.timeout
+                    )
         finally:
             # Release lock
             MT5Connector._initialization_lock = False
@@ -205,37 +221,20 @@ class MT5Connector:
                 print(f"      5. Check that AutoTrading button is enabled (green) in toolbar")
                 print(f"      6. Close any other programs trying to connect to MT5")
                 print(f"      7. Restart MT5 as Administrator if needed")
-            
-            self.last_error = msg
-            return False, msg
-        
-        print(f"   ✓ MT5 initialized successfully")
-        
-        # Step 4: Login
-        print(f"\n[4/4] Logging in to {self.server}...")
-        
-        login_success = mt5.login(self.login, password=self.password, server=self.server)
-        
-        if not login_success:
-            error = mt5.last_error()
-            error_code = error[0] if error else -1
-            error_text = error[1] if error and len(error) > 1 else "Unknown error"
-            msg = f"❌ Login failed - Code {error_code}: {error_text}"
-            print(f"   {msg}")
-            
-            # Provide helpful tips
-            if error_code == 10004:
+            elif error_code == 10004:
                 print(f"   💡 No connection to server - check internet/firewall")
             elif error_code == 10013:
                 print(f"   💡 Invalid credentials or account expired")
             elif error_code == 10014:
                 print(f"   💡 Server '{self.server}' not found")
             
-            mt5.shutdown()
             self.last_error = msg
             return False, msg
         
-        # Verify account info
+        print(f"   ✓ MT5 initialized and logged in successfully")
+        
+        # Step 4: Verify account info
+        print(f"\n[4/4] Verifying account info...")
         account = mt5.account_info()
         if account is None:
             msg = "❌ Failed to get account info"
@@ -244,12 +243,13 @@ class MT5Connector:
             self.last_error = msg
             return False, msg
         
+        print(f"   ✓ Account info verified")
+        
         # Success!
         self.connected = True
         self.connection_time = datetime.now()
         self.last_error = None
         
-        print(f"   ✓ Login successful!")
         print(f"\n" + "="*60)
         print("CONNECTION SUCCESSFUL")
         print("="*60)
