@@ -2,12 +2,30 @@
 MT5 Connection Manager
 Handles secure connection to MetaTrader 5 with auto-reconnection and health monitoring
 """
-import MetaTrader5 as mt5
 from datetime import datetime
 from typing import Optional, Dict, Any
 from pathlib import Path
 import time
 from functools import wraps
+
+# Lazy import of MetaTrader5 to prevent import errors on startup
+# MT5 is only available on Windows and should only be imported when actually used
+mt5 = None
+
+def _ensure_mt5_imported():
+    """Lazy import MetaTrader5 module"""
+    global mt5
+    if mt5 is None:
+        try:
+            import MetaTrader5 as _mt5
+            mt5 = _mt5
+        except ImportError as e:
+            raise ImportError(
+                "MetaTrader5 package is not installed or not available on this platform. "
+                "Please install it using: pip install MetaTrader5\n"
+                "Note: MetaTrader5 only works on Windows."
+            ) from e
+    return mt5
 
 from config.settings import MT5Config
 
