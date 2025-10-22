@@ -10,7 +10,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from mt5_connector import get_connector, MT5_LOGIN, MT5_PASSWORD, MT5_SERVER, MT5_PATH
+from src.mt5.connection import get_mt5_connection, MT5Connection
 
 
 def render_connection_panel():
@@ -19,14 +19,11 @@ def render_connection_panel():
     st.markdown("### 🔌 MT5 Connection Manager")
     
     # Initialize session state
-    if 'mt5_connector' not in st.session_state:
-        st.session_state.mt5_connector = get_connector()
-    
-    connector = st.session_state.mt5_connector
-    
-    # Get current status
-    status = connector.get_status()
-    is_connected = status['connected']
+    if 'mt5_connection' not in st.session_state:
+        st.session_state.mt5_connection = get_mt5_connection()
+
+    connection: MT5Connection = st.session_state.mt5_connection
+    is_connected = connection.is_connected()
     
     # Connection status display
     col1, col2 = st.columns([2, 1])
@@ -36,7 +33,7 @@ def render_connection_panel():
             st.success("🟢 **CONNECTED**")
             
             # Show account info
-            account_info = connector.get_account_info()
+            account_info = connection.get_account_info()
             if account_info:
                 st.markdown(f"""
                 **Account:** {account_info['login']}  
@@ -45,16 +42,15 @@ def render_connection_panel():
                 **Company:** {account_info['company']}
                 """)
                 
-                if connector.connection_time:
-                    elapsed = datetime.now() - connector.connection_time
+                if connection._last_connection_time:
+                    elapsed = datetime.now() - connection._last_connection_time
                     hours = int(elapsed.total_seconds() // 3600)
                     minutes = int((elapsed.total_seconds() % 3600) // 60)
                     st.caption(f"Connected for: {hours}h {minutes}m")
         else:
             st.error("🔴 **DISCONNECTED**")
             
-            if status['last_error']:
-                st.warning(f"⚠️ Last error: {status['last_error']}")
+            # No last error accessor; rely on reconnect feedback
     
     with col2:
         # Connection time indicator
@@ -66,22 +62,7 @@ def render_connection_panel():
     
     st.markdown("---")
     
-    # Credentials display
-    st.markdown("#### 📋 Connection Details")
-    
-    col_a, col_b = st.columns(2)
-    
-    with col_a:
-        st.markdown(f"""
-        **Login:** `{MT5_LOGIN}`  
-        **Server:** `{MT5_SERVER}`
-        """)
-    
-    with col_b:
-        st.markdown(f"""
-        **Password:** `{'*' * len(MT5_PASSWORD)}`  
-        **Path:** `{MT5_PATH[:40]}...`
-        """)
+    # Credentials display removed to avoid leaking details
     
     st.markdown("---")
     
@@ -94,11 +75,17 @@ def render_connection_panel():
         if st.button(
             "🔌 CONNECT" if not is_connected else "🔌 RECONNECT",
             type="primary",
-            use_container_width=True,
-            disabled=is_connected
+            use_container_width=True
         ):
             with st.spinner("Connecting to MT5..."):
-                success, message = connector.connect()
+                try:
+                    if is_connected:
+                        connection.disconnect()
+                    success = connection.connect()
+                    message = "Connected" if success else "Failed"
+                except Exception as e:
+                    success = False
+                    message = str(e)
                 
                 if success:
                     st.success(f"✅ {message}")
@@ -115,7 +102,8 @@ def render_connection_panel():
             disabled=not is_connected
         ):
             with st.spinner("Disconnecting..."):
-                success, message = connector.disconnect()
+                success = connection.disconnect()
+                message = "✓ Disconnected successfully" if success else "Disconnect failed"
                 
                 if success:
                     st.info(f"ℹ️ {message}")
@@ -152,15 +140,12 @@ def render_connection_panel():
 def render_connection_widget():
     """Render minimal connection status widget for other pages"""
     
-    # Initialize connector if not exists
-    if 'mt5_connector' not in st.session_state:
-        st.session_state.mt5_connector = get_connector()
-    
-    connector = st.session_state.mt5_connector
-    status = connector.get_status()
-    
-    if status['connected']:
-        account_info = connector.get_account_info()
+    if 'mt5_connection' not in st.session_state:
+        st.session_state.mt5_connection = get_mt5_connection()
+
+    connection: MT5Connection = st.session_state.mt5_connection
+    if connection.is_connected():
+        account_info = connection.get_account_info()
         if account_info:
             st.success(f"🟢 MT5 Connected: {account_info['login']} @ {account_info['server']}")
         else:
@@ -172,17 +157,15 @@ def render_connection_widget():
 def get_connection_status() -> dict:
     """Get current MT5 connection status (for use in other components)"""
     
-    if 'mt5_connector' not in st.session_state:
-        st.session_state.mt5_connector = get_connector()
-    
-    connector = st.session_state.mt5_connector
-    return connector.get_status()
+    if 'mt5_connection' not in st.session_state:
+        st.session_state.mt5_connection = get_mt5_connection()
+
+    connection: MT5Connection = st.session_state.mt5_connection
+    return connection.get_connection_status()
 
 
 def get_mt5_connector():
-    """Get MT5 connector instance (for use in other components)"""
-    
-    if 'mt5_connector' not in st.session_state:
-        st.session_state.mt5_connector = get_connector()
-    
-    return st.session_state.mt5_connector
+    """Backward-compat: return MT5Connection as 'connector'"""
+    if 'mt5_connection' not in st.session_state:
+        st.session_state.mt5_connection = get_mt5_connection()
+    return st.session_state.mt5_connection

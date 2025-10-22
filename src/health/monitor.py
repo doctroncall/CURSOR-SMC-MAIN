@@ -142,8 +142,8 @@ class HealthMonitor:
         """
         try:
             if connector is None:
-                from mt5_connector import get_connector
-                connector = get_connector()
+                from src.mt5.connection import get_mt5_connection
+                connector = get_mt5_connection()
             
             # Get connection status
             is_connected = connector.is_connected()

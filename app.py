@@ -220,16 +220,9 @@ def main():
                 update_module_status('mt5_connection', 'running', 'Checking MT5 connection...')
                 log_to_console("Checking MT5 connection...", "INFO")
                 
-                # Get connector from session state (must be same instance that was connected)
-                if 'mt5_connector' not in st.session_state:
-                    st.error("❌ MT5 connector not initialized. Please go to Settings → MT5 Connection and click CONNECT first.")
-                    update_module_status('mt5_connection', 'error', 'Connector not initialized')
-                    add_activity("Analysis failed: Connector not initialized", "❌", "error")
-                    log_to_console("MT5 connector not initialized", "ERROR")
-                    return
-                
-                connector = st.session_state.mt5_connector
-                log_to_console(f"Got connector from session state: {connector}", "DEBUG")
+                # Get connection from session state
+                connector = get_mt5_connector()
+                log_to_console(f"Got connection instance from session state", "DEBUG")
                 
                 is_connected = connector.is_connected()
                 log_to_console(f"Connector.is_connected() returned: {is_connected}", "DEBUG")
@@ -241,15 +234,16 @@ def main():
                     log_to_console("MT5 not connected - user must connect manually", "ERROR")
                     return
                 
-                log_to_console(f"MT5 connected: {connector.login} @ {connector.server}", "INFO")
+                log_to_console("MT5 connected", "INFO")
                 
                 with st.spinner("Fetching data from MT5..."):
-                    # Create data fetcher without old connection (uses direct MT5 API)
-                    data_fetcher = MT5DataFetcher(connection=None)
+                    # Use managed connection for data fetcher
+                    from src.mt5.connection import MT5Connection
+                    data_fetcher = MT5DataFetcher(connection=connector)
                     
                 update_module_status('mt5_connection', 'success', 'Connected successfully')
-                add_activity(f"Connected to MT5 - Account {connector.login}", "✅", "success")
-                log_to_console(f"MT5 connected successfully - Account: {connector.login}", "INFO")
+                add_activity("Connected to MT5", "✅", "success")
+                log_to_console("MT5 connected successfully", "INFO")
                 
                 # Fetch data
                 update_module_status('data_fetcher', 'running', f'Fetching data for {symbol}...')
@@ -295,7 +289,12 @@ def main():
                     update_module_status('sentiment_engine', 'running', f'Analyzing {primary_tf}...')
                     
                     with st.spinner("Analyzing sentiment..."):
-                        df = data_dict[primary_tf]
+                        df = data_dict.get(primary_tf)
+                        if df is None or df.empty:
+                            update_module_status('sentiment_engine', 'error', f'No data for {primary_tf}')
+                            log_to_console(f"No data returned for primary timeframe {primary_tf}", "ERROR")
+                            st.error(f"No data returned for primary timeframe {primary_tf}")
+                            return
                         log_to_console(f"Running technical indicators on {len(df)} bars...", "DEBUG")
                         
                         results = components['sentiment_engine'].analyze_sentiment(
@@ -476,7 +475,8 @@ def main():
         """, unsafe_allow_html=True)
         
         # Get data for regime analysis
-        if 'mt5_connector' in st.session_state and st.session_state.mt5_connector.is_connected():
+        from gui.components.connection_panel import get_mt5_connector
+        if get_mt5_connector().is_connected():
             # Fetch fresh data for regime analysis
             col1, col2, col3 = st.columns([2, 1, 1])
             
@@ -500,8 +500,7 @@ def main():
                     with st.spinner(f"Fetching {regime_symbol} {regime_tf} data..."):
                         try:
                             from src.mt5.data_fetcher import MT5DataFetcher
-                            
-                            fetcher = MT5DataFetcher(connection=None)
+                            fetcher = MT5DataFetcher(connection=get_mt5_connector())
                             regime_df = fetcher.get_ohlcv(regime_symbol, regime_tf, count=500)
                             
                             if regime_df is not None and not regime_df.empty:

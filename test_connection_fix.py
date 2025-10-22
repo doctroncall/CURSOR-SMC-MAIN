@@ -7,7 +7,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from mt5_connector import MT5Connector
+from src.mt5.connection import MT5Connection
 
 def test_connection():
     """Test MT5 connection with the new fix"""
@@ -19,7 +19,7 @@ def test_connection():
     
     # Create connector
     print("[1/3] Creating MT5Connector instance...")
-    connector = MT5Connector()
+    connector = MT5Connection()
     print(f"✓ Connector created")
     print(f"   Login: {connector.login}")
     print(f"   Server: {connector.server}")
@@ -28,7 +28,12 @@ def test_connection():
     print("\n[2/3] Attempting to connect...")
     print("   (This should NOT disconnect your MT5 terminal if it's running)")
     
-    success, message = connector.connect()
+    try:
+        success = connector.connect()
+        message = "Connected" if success else "Failed"
+    except Exception as e:
+        success = False
+        message = str(e)
     
     if success:
         print(f"\n✅ SUCCESS! {message}")
