@@ -1,12 +1,15 @@
 @echo off
 REM ========================================
 REM MT5 Sentiment Analysis Bot Launcher
+REM Enhanced Python Stable Version
 REM ========================================
 REM This script handles all setup and starts the bot automatically
 
+setlocal enabledelayedexpansion
+
 echo.
 echo ========================================
-echo MT5 Sentiment Analysis Bot
+echo MT5 Sentiment Analysis Bot (Python)
 echo ========================================
 echo.
 
@@ -14,12 +17,39 @@ REM Check if Python is installed
 python --version >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Python is not installed or not in PATH
+    echo.
     echo Please install Python 3.10+ from https://www.python.org/downloads/
+    echo Make sure to check "Add Python to PATH" during installation
+    echo.
     pause
     exit /b 1
 )
 
-echo [OK] Python found
+REM Get Python version and validate
+for /f "tokens=2" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
+echo [OK] Python found - Version %PYTHON_VERSION%
+
+REM Extract major and minor version
+for /f "tokens=1,2 delims=." %%a in ("%PYTHON_VERSION%") do (
+    set PYTHON_MAJOR=%%a
+    set PYTHON_MINOR=%%b
+)
+
+REM Check if Python version is 3.10 or higher
+if %PYTHON_MAJOR% LSS 3 (
+    echo [ERROR] Python 3.10+ required. Current version: %PYTHON_VERSION%
+    echo Please upgrade Python from https://www.python.org/downloads/
+    pause
+    exit /b 1
+)
+if %PYTHON_MAJOR% EQU 3 if %PYTHON_MINOR% LSS 10 (
+    echo [WARNING] Python 3.10+ recommended. Current version: %PYTHON_VERSION%
+    echo The bot may work but some features might be unstable.
+    echo.
+    choice /C YN /M "Continue anyway"
+    if errorlevel 2 exit /b 1
+)
+
 echo.
 
 REM Check if virtual environment exists
