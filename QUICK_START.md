@@ -2,7 +2,9 @@
 
 Get your MT5 Sentiment Analysis Bot running in 3 easy steps!
 
-## ⚡ Fast Track Installation
+## ⚡ Fast Track Installation (Python-Based)
+
+Your bot runs on **Python** for maximum stability and reliability!
 
 ### Windows Users:
 
@@ -10,7 +12,7 @@ Get your MT5 Sentiment Analysis Bot running in 3 easy steps!
 2. **Double-click `start_bot.bat`**
 3. **Follow the prompts**
 
-That's it! The script handles everything automatically.
+That's it! The enhanced Python script handles everything automatically.
 
 ### Linux/Mac Users:
 
@@ -21,14 +23,19 @@ That's it! The script handles everything automatically.
    ```
 3. **Follow the prompts**
 
-## 📋 What the Launcher Does Automatically:
+The script automatically validates your Python version and sets up everything!
 
-✅ Checks Python installation  
-✅ Creates virtual environment  
-✅ Installs all dependencies  
-✅ Creates configuration file  
-✅ Initializes database  
-✅ Starts the dashboard  
+## 📋 What the Enhanced Python Launcher Does Automatically:
+
+✅ Validates Python version (3.10+ required)  
+✅ Checks Python installation path  
+✅ Creates isolated virtual environment  
+✅ Upgrades pip to latest version  
+✅ Installs all dependencies with progress tracking  
+✅ Creates required directories (data, logs, models, reports)  
+✅ Initializes SQLite database  
+✅ Starts the Streamlit dashboard  
+✅ Provides detailed error messages if issues occur  
 
 ## ⚙️ First-Time Setup (One-Time Only):
 
@@ -81,18 +88,33 @@ Save and close the file.
 
 ## 🔧 Troubleshooting:
 
-### "Python not found"
-- Install Python 3.10+ from python.org
-- Make sure to check "Add Python to PATH" during installation
+### "Python not found" or "Python version too old"
+- Install Python 3.10+ from python.org (3.11 recommended)
+- **Windows**: Make sure to check "Add Python to PATH" during installation
+- **Linux**: `sudo apt-get install python3 python3-pip python3-venv`
+- **macOS**: `brew install python3`
+- Restart your terminal/command prompt after installation
 
 ### "TA-Lib import error"
 - Follow TA-Lib installation instructions above
-- Restart the launcher script
+- **Windows**: Download the wheel file matching your Python version
+- Restart the launcher script after installation
+
+### "Failed to create virtual environment"
+- **Linux**: Install venv: `sudo apt-get install python3-venv`
+- Ensure you have write permissions in the project directory
+- Check available disk space
 
 ### "MT5 connection failed"
 - Check credentials in `.env` file
-- Ensure MT5 terminal is running
+- Ensure MT5 terminal is running (Windows only)
 - Verify server name is correct
+- Go to Settings → MT5 Connection in the dashboard
+
+### "Streamlit exited with error"
+- Check the `logs/` folder for detailed error messages
+- Ensure all dependencies installed correctly
+- Try deleting `venv` folder and running the start script again
 
 ## 📚 Need More Help?
 
