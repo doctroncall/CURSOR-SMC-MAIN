@@ -37,25 +37,50 @@ echo [OK] Conda found - Version %CONDA_VERSION%
 echo.
 
 REM Initialize conda for batch script
-call conda info --envs >nul 2>&1
-if errorlevel 1 (
-    echo [SETUP] Initializing conda for cmd.exe...
-    call conda init cmd.exe
-    echo [INFO] Please close and reopen this terminal, then run this script again
-    pause
-    exit /b 0
+REM Locate conda installation
+set "CONDA_BAT="
+if exist "%USERPROFILE%\anaconda3\Scripts\conda.exe" (
+    set "CONDA_BAT=%USERPROFILE%\anaconda3\Scripts\activate.bat"
+) else if exist "%USERPROFILE%\miniconda3\Scripts\conda.exe" (
+    set "CONDA_BAT=%USERPROFILE%\miniconda3\Scripts\activate.bat"
+) else if exist "%ProgramData%\anaconda3\Scripts\conda.exe" (
+    set "CONDA_BAT=%ProgramData%\anaconda3\Scripts\activate.bat"
+) else if exist "%ProgramData%\miniconda3\Scripts\conda.exe" (
+    set "CONDA_BAT=%ProgramData%\miniconda3\Scripts\activate.bat"
 )
 
+REM Try to find conda via conda info
+if "%CONDA_BAT%"=="" (
+    for /f "tokens=*" %%i in ('conda info --base 2^>nul') do (
+        if exist "%%i\Scripts\activate.bat" set "CONDA_BAT=%%i\Scripts\activate.bat"
+    )
+)
+
+if "%CONDA_BAT%"=="" (
+    echo [ERROR] Could not locate conda activate.bat
+    echo Please ensure Anaconda/Miniconda is properly installed
+    echo.
+    echo Try running: conda init cmd.exe
+    echo Then close and reopen this terminal
+    pause
+    exit /b 1
+)
+
+echo [OK] Found conda activation script: %CONDA_BAT%
+echo.
+
 REM Check if conda environment exists
-conda env list | findstr "mt5-sentiment-bot" >nul 2>&1
+echo [SETUP] Checking for conda environment 'mt5-sentiment-bot'...
+conda env list | findstr /C:"mt5-sentiment-bot" >nul 2>&1
 if errorlevel 1 (
-    echo [SETUP] Creating conda environment from environment.yml...
+    echo [SETUP] Environment not found - creating from environment.yml...
     echo This will take 5-15 minutes - please be patient
     echo.
     
     REM Check if environment.yml exists
     if not exist "environment.yml" (
-        echo [ERROR] environment.yml not found
+        echo [ERROR] environment.yml not found in current directory
+        echo Current directory: %CD%
         echo Please ensure environment.yml is in the project directory
         pause
         exit /b 1
@@ -64,7 +89,9 @@ if errorlevel 1 (
     echo [SETUP] Installing packages with conda...
     echo Progress: This includes TA-Lib and all ML libraries
     echo.
-    conda env create -f environment.yml
+    echo Running: conda env create -f environment.yml
+    echo.
+    conda env create -f environment.yml --yes
     if errorlevel 1 (
         echo.
         echo [ERROR] Failed to create conda environment
@@ -74,23 +101,25 @@ if errorlevel 1 (
         echo 2. Try: conda clean --all
         echo 3. Try: conda update conda
         echo 4. Check the error messages above
+        echo 5. Try manually: conda env create -f environment.yml
         echo.
         pause
         exit /b 1
     )
     echo.
-    echo [OK] Conda environment created successfully
+    echo [OK] Conda environment 'mt5-sentiment-bot' created successfully
     echo.
 ) else (
     echo [OK] Conda environment 'mt5-sentiment-bot' already exists
-    echo [INFO] To update environment: conda env update -f environment.yml
+    echo [INFO] To update: conda env update -f environment.yml --prune
+    echo.
 )
 
 echo.
 echo [SETUP] Activating conda environment...
 
-REM Activate the conda environment
-call conda activate mt5-sentiment-bot
+REM Activate the conda environment using the activate.bat script
+call "%CONDA_BAT%" mt5-sentiment-bot
 if errorlevel 1 (
     echo [ERROR] Failed to activate conda environment
     echo.
@@ -98,13 +127,15 @@ if errorlevel 1 (
     echo 1. Close and reopen your terminal
     echo 2. Run: conda init cmd.exe
     echo 3. Delete and recreate environment: conda env remove -n mt5-sentiment-bot
+    echo 4. Manually run: %CONDA_BAT% mt5-sentiment-bot
     echo.
     pause
     exit /b 1
 )
 
-echo [OK] Conda environment activated
-echo Environment: mt5-sentiment-bot
+echo [OK] Conda environment activated: mt5-sentiment-bot
+echo Python: 
+python --version
 echo.
 
 REM Verify key packages are installed
