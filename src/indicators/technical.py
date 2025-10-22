@@ -5,8 +5,14 @@ Comprehensive technical analysis indicators using TA-Lib and pandas-ta
 import pandas as pd
 import numpy as np
 from typing import Dict, Any, Optional, List
-import talib
-import pandas_ta as pta
+try:
+    import talib
+except Exception as e:  # pragma: no cover
+    talib = None
+try:
+    import pandas_ta as pta
+except Exception:
+    pta = None
 
 from config.settings import IndicatorConfig
 from src.utils.logger import get_logger
@@ -41,6 +47,8 @@ class TechnicalIndicators:
         column: str = 'Close'
     ) -> pd.Series:
         """Calculate Exponential Moving Average"""
+        if talib is None:
+            raise ImportError("TA-Lib is required for EMA. Please install TA-Lib.")
         return talib.EMA(df[column], timeperiod=period)
     
     def calculate_sma(
@@ -50,6 +58,8 @@ class TechnicalIndicators:
         column: str = 'Close'
     ) -> pd.Series:
         """Calculate Simple Moving Average"""
+        if talib is None:
+            raise ImportError("TA-Lib is required for SMA. Please install TA-Lib.")
         return talib.SMA(df[column], timeperiod=period)
     
     def calculate_macd(
@@ -69,6 +79,8 @@ class TechnicalIndicators:
         slow = slow or self.config.MACD_SLOW
         signal = signal or self.config.MACD_SIGNAL
         
+        if talib is None:
+            raise ImportError("TA-Lib is required for MACD. Please install TA-Lib.")
         macd, signal_line, histogram = talib.MACD(
             df['Close'],
             fastperiod=fast,
@@ -95,6 +107,8 @@ class TechnicalIndicators:
         """
         period = period or self.config.ADX_PERIOD
         
+        if talib is None:
+            raise ImportError("TA-Lib is required for ADX. Please install TA-Lib.")
         adx = talib.ADX(df['High'], df['Low'], df['Close'], timeperiod=period)
         plus_di = talib.PLUS_DI(df['High'], df['Low'], df['Close'], timeperiod=period)
         minus_di = talib.MINUS_DI(df['High'], df['Low'], df['Close'], timeperiod=period)
@@ -153,6 +167,8 @@ class TechnicalIndicators:
     ) -> pd.Series:
         """Calculate RSI (Relative Strength Index)"""
         period = period or self.config.RSI_PERIOD
+        if talib is None:
+            raise ImportError("TA-Lib is required for RSI. Please install TA-Lib.")
         return talib.RSI(df['Close'], timeperiod=period)
     
     def calculate_stochastic(
@@ -172,6 +188,8 @@ class TechnicalIndicators:
         d_period = d_period or self.config.STOCH_D
         smooth = smooth or self.config.STOCH_SMOOTH
         
+        if talib is None:
+            raise ImportError("TA-Lib is required for Stochastic. Please install TA-Lib.")
         slowk, slowd = talib.STOCH(
             df['High'],
             df['Low'],
@@ -192,6 +210,8 @@ class TechnicalIndicators:
         period: int = 20
     ) -> pd.Series:
         """Calculate CCI (Commodity Channel Index)"""
+        if talib is None:
+            raise ImportError("TA-Lib is required for CCI. Please install TA-Lib.")
         return talib.CCI(df['High'], df['Low'], df['Close'], timeperiod=period)
     
     def calculate_williams_r(
@@ -200,6 +220,8 @@ class TechnicalIndicators:
         period: int = 14
     ) -> pd.Series:
         """Calculate Williams %R"""
+        if talib is None:
+            raise ImportError("TA-Lib is required for Williams %R. Please install TA-Lib.")
         return talib.WILLR(df['High'], df['Low'], df['Close'], timeperiod=period)
     
     # ==================== Volatility Indicators ====================
@@ -219,6 +241,8 @@ class TechnicalIndicators:
         period = period or self.config.BB_PERIOD
         std_dev = std_dev or self.config.BB_STD
         
+        if talib is None:
+            raise ImportError("TA-Lib is required for Bollinger Bands. Please install TA-Lib.")
         upper, middle, lower = talib.BBANDS(
             df['Close'],
             timeperiod=period,
@@ -239,6 +263,8 @@ class TechnicalIndicators:
     ) -> pd.Series:
         """Calculate ATR (Average True Range)"""
         period = period or self.config.ATR_PERIOD
+        if talib is None:
+            raise ImportError("TA-Lib is required for ATR. Please install TA-Lib.")
         return talib.ATR(df['High'], df['Low'], df['Close'], timeperiod=period)
     
     def calculate_keltner_channels(
@@ -269,6 +295,8 @@ class TechnicalIndicators:
     
     def calculate_obv(self, df: pd.DataFrame) -> pd.Series:
         """Calculate OBV (On Balance Volume)"""
+        if talib is None:
+            raise ImportError("TA-Lib is required for OBV. Please install TA-Lib.")
         return talib.OBV(df['Close'], df['Volume'])
     
     def calculate_vwap(self, df: pd.DataFrame) -> pd.Series:
@@ -282,6 +310,8 @@ class TechnicalIndicators:
         period: int = 14
     ) -> pd.Series:
         """Calculate MFI (Money Flow Index)"""
+        if talib is None:
+            raise ImportError("TA-Lib is required for MFI. Please install TA-Lib.")
         return talib.MFI(df['High'], df['Low'], df['Close'], df['Volume'], timeperiod=period)
     
     def calculate_volume_profile(
