@@ -18,11 +18,45 @@ A professional, production-grade Python/Streamlit application that analyzes MT5 
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.10 or higher (or Anaconda/Miniconda)
 - MetaTrader 5 installed (Windows) or MT5 account access
-- TA-Lib library installed
+- TA-Lib library installed (automatic with Anaconda method)
 
-### Installation
+### Installation Options
+
+Choose one of the two methods below:
+
+#### Option A: Anaconda/Miniconda (Recommended - Easiest TA-Lib setup!)
+
+**Why Anaconda?** TA-Lib is automatically installed via conda-forge without manual compilation!
+
+1. **Install Anaconda or Miniconda**
+   - Anaconda: https://www.anaconda.com/products/distribution
+   - Miniconda (lightweight): https://docs.conda.io/en/latest/miniconda.html
+
+2. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd mt5-sentiment-bot
+   ```
+
+3. **Run the bot** (one command does everything!)
+   
+   **Linux/macOS:**
+   ```bash
+   ./start_bot_conda.sh
+   ```
+   
+   **Windows:**
+   ```cmd
+   start_bot_conda.bat
+   ```
+
+4. **Configure your MT5 credentials** when prompted
+
+That's it! See [ANACONDA_SETUP.md](ANACONDA_SETUP.md) for detailed instructions.
+
+#### Option B: Traditional Python Virtual Environment
 
 1. **Clone the repository**
    ```bash
@@ -66,6 +100,10 @@ A professional, production-grade Python/Streamlit application that analyzes MT5 
    ```bash
    streamlit run app.py
    ```
+   
+   Or use the automated startup scripts:
+   - **Linux/macOS:** `./start_bot.sh`
+   - **Windows:** `start_bot.bat`
 
 ## ⚙️ Configuration
 
