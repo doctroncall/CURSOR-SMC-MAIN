@@ -14,55 +14,68 @@ A professional, production-grade Python/Streamlit application that analyzes MT5 
 - **PDF Reports**: Downloadable daily, weekly, and monthly performance reports
 - **Detailed Logging**: Comprehensive logging for debugging and monitoring
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Anaconda)
 
 ### Prerequisites
 
-- Python 3.10 or higher
-- MetaTrader 5 installed (Windows) or MT5 account access
-- TA-Lib library installed
+- **Anaconda or Miniconda** (recommended for stability)
+- **MetaTrader 5** account access
+- Internet connection (first-time setup)
 
-### Installation
+### Installation (Automated!)
 
-1. **Clone the repository**
+**Step 1: Install Anaconda/Miniconda**
+
+Choose one:
+- **Anaconda** (full): https://www.anaconda.com/download
+- **Miniconda** (minimal): https://docs.conda.io/en/latest/miniconda.html
+
+**Step 2: Run the launcher**
+
+#### Windows:
+```batch
+start_bot.bat
+```
+
+#### Linux/Mac:
+```bash
+./start_bot.sh
+```
+
+**That's it!** The script automatically:
+- ✅ Creates conda environment
+- ✅ Installs all dependencies (including TA-Lib!)
+- ✅ Sets up database
+- ✅ Launches dashboard
+
+**First run:** 5-15 minutes (one-time setup)  
+**Subsequent runs:** Instant!
+
+Dashboard opens at: **http://localhost:8501**
+
+---
+
+### Alternative: Manual Installation
+
+If you prefer manual setup:
+
+1. **Create conda environment**
    ```bash
-   git clone <repository-url>
-   cd mt5-sentiment-bot
+   conda env create -f environment.yml
    ```
 
-2. **Install TA-Lib** (required before pip install)
-   
-   **On Windows:**
-   - Download TA-Lib from: https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib
-   - Install: `pip install TA_Lib-0.4.XX-cpXX-cpXX-win_amd64.whl`
-   
-   **On Linux:**
+2. **Activate environment**
    ```bash
-   wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
-   tar -xzf ta-lib-0.4.0-src.tar.gz
-   cd ta-lib/
-   ./configure --prefix=/usr
-   make
-   sudo make install
-   ```
-   
-   **On macOS:**
-   ```bash
-   brew install ta-lib
+   conda activate mt5-sentiment-bot
    ```
 
-3. **Install Python dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Configure environment variables**
+3. **Configure environment variables**
    ```bash
    cp .env.example .env
-   # Edit .env with your MT5 credentials and preferences
+   # Edit .env with your MT5 credentials
    ```
 
-5. **Run the application**
+4. **Run the application**
    ```bash
    streamlit run app.py
    ```

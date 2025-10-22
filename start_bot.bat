@@ -1,150 +1,156 @@
 @echo off
 REM ========================================
 REM MT5 Sentiment Analysis Bot Launcher
+REM Anaconda/Conda Version
 REM ========================================
-REM This script handles all setup and starts the bot automatically
+REM This script uses Anaconda for better stability with ML dependencies
+
+setlocal enabledelayedexpansion
 
 echo.
 echo ========================================
-echo MT5 Sentiment Analysis Bot
+echo MT5 Sentiment Analysis Bot (Anaconda)
 echo ========================================
 echo.
 
-REM Check if Python is installed
-python --version >nul 2>&1
+REM Check if conda is installed
+where conda >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Python is not installed or not in PATH
-    echo Please install Python 3.10+ from https://www.python.org/downloads/
+    echo [ERROR] Anaconda/Miniconda is not installed or not in PATH
+    echo.
+    echo Please install Anaconda or Miniconda:
+    echo   - Anaconda (full): https://www.anaconda.com/download
+    echo   - Miniconda (minimal): https://docs.conda.io/en/latest/miniconda.html
+    echo.
+    echo After installation:
+    echo   1. Restart your command prompt
+    echo   2. Run this script again
+    echo.
     pause
     exit /b 1
 )
 
-echo [OK] Python found
+REM Get conda version
+for /f "tokens=2" %%i in ('conda --version 2^>^&1') do set CONDA_VERSION=%%i
+echo [OK] Conda found - Version %CONDA_VERSION%
 echo.
 
-REM Check if virtual environment exists
-if not exist "venv\" (
-    echo [SETUP] Creating virtual environment...
-    python -m venv venv
-    if errorlevel 1 (
-        echo [ERROR] Failed to create virtual environment
-        pause
-        exit /b 1
-    )
-    echo [OK] Virtual environment created
-)
-
-REM Activate virtual environment
-echo [SETUP] Activating virtual environment...
-call venv\Scripts\activate.bat
+REM Initialize conda for batch script
+call conda info --envs >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Failed to activate virtual environment
+    echo [SETUP] Initializing conda for cmd.exe...
+    call conda init cmd.exe
+    echo [INFO] Please close and reopen this terminal, then run this script again
     pause
-    exit /b 1
+    exit /b 0
 )
 
-echo [OK] Virtual environment activated
-echo.
-
-REM Check if dependencies are installed
-echo [SETUP] Checking dependencies...
-pip show streamlit >nul 2>&1
+REM Check if conda environment exists
+conda env list | findstr "mt5-sentiment-bot" >nul 2>&1
 if errorlevel 1 (
-    echo [SETUP] Installing dependencies this may take a few minutes...
+    echo [SETUP] Creating conda environment from environment.yml...
+    echo This will take 5-15 minutes - please be patient
     echo.
     
-    REM Try to install TA-Lib first
-    echo [SETUP] Attempting to install TA-Lib...
-    pip install Ta-lib >nul 2>&1
-    if errorlevel 1 (
-        echo [WARNING] TA-Lib pip install failed, trying alternative...
-        pip install TA-Lib >nul 2>&1
-    )
-    
-    REM Check if TA-Lib is now installed
-    pip show Ta-lib >nul 2>&1
-    if errorlevel 1 (
-        pip show TA-Lib >nul 2>&1
-        if errorlevel 1 (
-            echo.
-            echo ========================================
-            echo WARNING: TA-Lib installation failed
-            echo ========================================
-            echo TA-Lib is required but could not be installed automatically.
-            echo.
-            echo Please try ONE of these options:
-            echo.
-            echo OPTION 1 - Try manual install:
-            echo   pip install Ta-lib
-            echo.
-            echo OPTION 2 - Download wheel file:
-            echo   1. Go to: https://github.com/cgohlke/talib-build/releases
-            echo   2. Download the .whl file for Python 3.13
-            echo   3. Run: pip install path\to\downloaded-file.whl
-            echo.
-            echo After installation, run this script again.
-            echo.
-            pause
-            exit /b 1
-        )
-    )
-    echo [OK] TA-Lib installed
-    
-    echo [SETUP] Installing remaining Python packages...
-    pip install -r requirements.txt
-    if errorlevel 1 (
-        echo [ERROR] Failed to install dependencies
+    REM Check if environment.yml exists
+    if not exist "environment.yml" (
+        echo [ERROR] environment.yml not found
+        echo Please ensure environment.yml is in the project directory
         pause
         exit /b 1
     )
-    echo [OK] All dependencies installed
+    
+    echo [SETUP] Installing packages with conda...
+    echo Progress: This includes TA-Lib and all ML libraries
+    echo.
+    conda env create -f environment.yml
+    if errorlevel 1 (
+        echo.
+        echo [ERROR] Failed to create conda environment
+        echo.
+        echo Troubleshooting:
+        echo 1. Check your internet connection
+        echo 2. Try: conda clean --all
+        echo 3. Try: conda update conda
+        echo 4. Check the error messages above
+        echo.
+        pause
+        exit /b 1
+    )
+    echo.
+    echo [OK] Conda environment created successfully
+    echo.
 ) else (
-    echo [OK] Dependencies already installed
+    echo [OK] Conda environment 'mt5-sentiment-bot' already exists
+    echo [INFO] To update environment: conda env update -f environment.yml
 )
 
 echo.
+echo [SETUP] Activating conda environment...
 
-REM Check if .env file exists
-if not exist ".env" (
-    echo [WARNING] .env file not found
+REM Activate the conda environment
+call conda activate mt5-sentiment-bot
+if errorlevel 1 (
+    echo [ERROR] Failed to activate conda environment
     echo.
-    if exist ".env.example" (
-        echo [SETUP] Creating .env from .env.example...
-        copy .env.example .env >nul
-        echo [OK] .env file created
-        echo.
-        echo ========================================
-        echo ACTION REQUIRED
-        echo ========================================
-        echo Please edit .env file with your MT5 credentials:
-        echo   - MT5_LOGIN
-        echo   - MT5_PASSWORD
-        echo   - MT5_SERVER
-        echo.
-        echo After editing, run this script again.
-        pause
-        notepad .env
-        exit /b 0
-    ) else (
-        echo [ERROR] .env.example not found
+    echo Try these solutions:
+    echo 1. Close and reopen your terminal
+    echo 2. Run: conda init cmd.exe
+    echo 3. Delete and recreate environment: conda env remove -n mt5-sentiment-bot
+    echo.
+    pause
+    exit /b 1
+)
+
+echo [OK] Conda environment activated
+echo Environment: mt5-sentiment-bot
+echo.
+
+REM Verify key packages are installed
+echo [SETUP] Verifying installation...
+python -c "import streamlit" >nul 2>&1
+if errorlevel 1 (
+    echo [WARNING] Streamlit not found, attempting to install missing packages...
+    conda env update -f environment.yml
+)
+
+python -c "import talib" >nul 2>&1
+if errorlevel 1 (
+    echo [WARNING] TA-Lib not properly installed
+    echo Attempting to install from conda-forge...
+    conda install -c conda-forge ta-lib -y
+    if errorlevel 1 (
+        echo [ERROR] TA-Lib installation failed
+        echo Try manually: conda install -c conda-forge ta-lib
         pause
         exit /b 1
     )
 )
 
-echo [OK] Configuration file found
+echo [OK] All packages verified
 echo.
 
-REM Create data directory if it doesn't exist
+REM Create necessary directories
+echo [SETUP] Checking directory structure...
 if not exist "data" mkdir data
+if not exist "logs" mkdir logs
+if not exist "models" mkdir models
+if not exist "reports" mkdir reports
+echo [OK] Directory structure ready
+echo.
 
 REM Check if database needs initialization
 if not exist "data\mt5_sentiment.db" (
     echo [SETUP] Initializing database...
     python -c "from src.database.models import init_database; init_database(); print('[OK] Database initialized')" 2>nul
     if errorlevel 1 (
-        echo [WARNING] Database initialization failed will retry on first run
+        echo [WARNING] Database initialization failed - will retry on first run
+        echo This is normal for first-time setup
+    ) else (
+        echo [OK] Database initialized successfully
     )
+) else (
+    echo [OK] Database already initialized
 )
 
 echo.
@@ -152,16 +158,34 @@ echo ========================================
 echo Starting MT5 Sentiment Analysis Bot...
 echo ========================================
 echo.
-echo Dashboard will open in your browser automatically
-echo Press Ctrl+C to stop the bot
+echo [INFO] Using Anaconda environment: mt5-sentiment-bot
+echo [INFO] Dashboard will open in your browser automatically
+echo [INFO] Press Ctrl+C to stop the bot
+echo.
+echo Launching Streamlit...
 echo.
 
 REM Start Streamlit with the app
-streamlit run app.py
+streamlit run app.py --server.headless=true --server.port=8501
+set STREAMLIT_EXIT_CODE=%errorlevel%
 
 REM If Streamlit exits, show message
 echo.
 echo ========================================
 echo Bot stopped
 echo ========================================
+
+if %STREAMLIT_EXIT_CODE% NEQ 0 (
+    echo.
+    echo [WARNING] Application exited with error code: %STREAMLIT_EXIT_CODE%
+    echo Check the logs folder for error details
+    echo.
+)
+
+echo.
+echo To restart the bot, run this script again.
+echo To deactivate conda: conda deactivate
+echo.
 pause
+
+endlocal
