@@ -21,24 +21,58 @@ if not errorlevel 1 (
     goto :conda_found
 )
 
-REM If 'where' fails, try to find conda in standard locations
+REM If 'where' fails, try to find conda in standard locations and add to PATH
 set "CONDA_FOUND="
-if exist "%USERPROFILE%\anaconda3\Scripts\conda.exe" set "CONDA_FOUND=1"
-if exist "%USERPROFILE%\miniconda3\Scripts\conda.exe" set "CONDA_FOUND=1"
-if exist "%ProgramData%\anaconda3\Scripts\conda.exe" set "CONDA_FOUND=1"
-if exist "%ProgramData%\miniconda3\Scripts\conda.exe" set "CONDA_FOUND=1"
-if exist "C:\ProgramData\Anaconda3\Scripts\conda.exe" set "CONDA_FOUND=1"
-if exist "C:\ProgramData\Miniconda3\Scripts\conda.exe" set "CONDA_FOUND=1"
+set "CONDA_PATH="
+
+REM Check common installation locations
+if exist "%USERPROFILE%\anaconda3\Scripts\conda.exe" (
+    set "CONDA_FOUND=1"
+    set "CONDA_PATH=%USERPROFILE%\anaconda3"
+)
+if exist "%USERPROFILE%\miniconda3\Scripts\conda.exe" (
+    set "CONDA_FOUND=1"
+    set "CONDA_PATH=%USERPROFILE%\miniconda3"
+)
+if exist "%ProgramData%\anaconda3\Scripts\conda.exe" (
+    set "CONDA_FOUND=1"
+    set "CONDA_PATH=%ProgramData%\anaconda3"
+)
+if exist "%ProgramData%\miniconda3\Scripts\conda.exe" (
+    set "CONDA_FOUND=1"
+    set "CONDA_PATH=%ProgramData%\miniconda3"
+)
+if exist "C:\ProgramData\Anaconda3\Scripts\conda.exe" (
+    set "CONDA_FOUND=1"
+    set "CONDA_PATH=C:\ProgramData\Anaconda3"
+)
+if exist "C:\ProgramData\Miniconda3\Scripts\conda.exe" (
+    set "CONDA_FOUND=1"
+    set "CONDA_PATH=C:\ProgramData\Miniconda3"
+)
 
 if defined CONDA_FOUND (
     echo [OK] Conda is installed but not in PATH
-    echo [INFO] Attempting to initialize conda...
+    echo [INFO] Adding conda to PATH temporarily...
     
-    REM Try to get conda base and add to PATH temporarily
-    for /f "tokens=*" %%i in ('conda info --base 2^>nul') do (
-        set "PATH=%%i\Scripts;%%i\Library\bin;!PATH!"
+    REM Add conda to PATH for this session
+    if defined CONDA_PATH (
+        set "PATH=!CONDA_PATH!\Scripts;!CONDA_PATH!\Library\bin;!CONDA_PATH!;!PATH!"
+        echo [OK] Using conda from: !CONDA_PATH!
     )
     goto :conda_found
+)
+
+REM Last resort: Try user's specific Anaconda installation
+if exist "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Anaconda (anaconda3)" (
+    REM This is likely a shortcut location, try to find actual installation
+    if exist "%PROGRAMDATA%\anaconda3\Scripts\conda.exe" (
+        set "CONDA_FOUND=1"
+        set "CONDA_PATH=%PROGRAMDATA%\anaconda3"
+        set "PATH=!CONDA_PATH!\Scripts;!CONDA_PATH!\Library\bin;!CONDA_PATH!;!PATH!"
+        echo [OK] Found Anaconda installation
+        goto :conda_found
+    )
 )
 
 REM If still not found, show error
