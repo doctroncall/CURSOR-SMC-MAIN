@@ -31,6 +31,7 @@ if errorlevel 1 (
 )
 
 REM Get conda version
+set CONDA_VERSION=unknown
 for /f "tokens=2" %%i in ('conda --version 2^>^&1') do set CONDA_VERSION=%%i
 echo [OK] Conda found - Version %CONDA_VERSION%
 echo.
@@ -166,6 +167,7 @@ echo Launching Streamlit...
 echo.
 
 REM Start Streamlit with the app
+set STREAMLIT_EXIT_CODE=0
 streamlit run app.py --server.headless=true --server.port=8501
 set STREAMLIT_EXIT_CODE=%errorlevel%
 
@@ -175,7 +177,7 @@ echo ========================================
 echo Bot stopped
 echo ========================================
 
-if %STREAMLIT_EXIT_CODE% NEQ 0 (
+if "%STREAMLIT_EXIT_CODE%" NEQ "0" (
     echo.
     echo [WARNING] Application exited with error code: %STREAMLIT_EXIT_CODE%
     echo Check the logs folder for error details
