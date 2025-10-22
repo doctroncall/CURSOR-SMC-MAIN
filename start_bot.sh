@@ -1,217 +1,152 @@
 #!/bin/bash
 # ========================================
 # MT5 Sentiment Analysis Bot Launcher
-# Enhanced Python Stable Version
+# Anaconda/Conda Version
 # For Linux/Mac users
 # ========================================
-# This script handles all setup and starts the bot automatically
-
-set -e  # Exit on error (we'll handle errors manually where needed)
+# This script uses Anaconda for better stability with ML dependencies
 
 echo ""
 echo "========================================"
-echo "MT5 Sentiment Analysis Bot (Python)"
+echo "MT5 Sentiment Analysis Bot (Anaconda)"
 echo "========================================"
 echo ""
 
-# Check if Python 3 is installed
-if ! command -v python3 &> /dev/null; then
-    echo "[ERROR] Python 3 is not installed"
+# Check if conda is installed
+if ! command -v conda &> /dev/null; then
+    echo "[ERROR] Anaconda/Miniconda is not installed or not in PATH"
     echo ""
-    echo "Please install Python 3.10+ from https://www.python.org/downloads/"
+    echo "Please install Anaconda or Miniconda:"
+    echo "  - Anaconda (full): https://www.anaconda.com/download"
+    echo "  - Miniconda (minimal): https://docs.conda.io/en/latest/miniconda.html"
     echo ""
-    echo "On Ubuntu/Debian: sudo apt-get install python3 python3-pip python3-venv"
-    echo "On macOS: brew install python3"
+    echo "On macOS:"
+    echo "  brew install --cask anaconda"
+    echo "  OR: brew install --cask miniconda"
+    echo ""
+    echo "On Linux:"
+    echo "  wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+    echo "  bash Miniconda3-latest-Linux-x86_64.sh"
+    echo ""
+    echo "After installation:"
+    echo "  1. Restart your terminal"
+    echo "  2. Run this script again"
     echo ""
     exit 1
 fi
 
-# Get Python version
-PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
-echo "[OK] Python found - Version $PYTHON_VERSION"
-
-# Extract major and minor version
-PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
-
-# Check if Python version is 3.10 or higher
-if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]); then
-    echo "[ERROR] Python 3.10+ required. Current version: $PYTHON_VERSION"
-    echo "Please upgrade Python from https://www.python.org/downloads/"
-    exit 1
-fi
-
+# Get conda version
+CONDA_VERSION=$(conda --version 2>&1 | awk '{print $2}')
+echo "[OK] Conda found - Version $CONDA_VERSION"
 echo ""
 
-# Check if virtual environment exists
-if [ ! -d "venv" ]; then
-    echo "[SETUP] Creating virtual environment..."
-    echo "This may take a minute..."
-    python3 -m venv venv
+# Initialize conda for bash if needed
+if [ ! -f "$HOME/.bashrc" ] || ! grep -q "conda initialize" "$HOME/.bashrc" 2>/dev/null; then
+    echo "[SETUP] Initializing conda for bash..."
+    conda init bash
+    echo "[INFO] Please restart your terminal and run this script again"
+    exit 0
+fi
+
+# Source conda
+CONDA_BASE=$(conda info --base)
+source "$CONDA_BASE/etc/profile.d/conda.sh"
+
+# Check if conda environment exists
+if ! conda env list | grep -q "^mt5-sentiment-bot "; then
+    echo "[SETUP] Creating conda environment from environment.yml..."
+    echo "This will take 5-15 minutes - please be patient"
+    echo ""
+    
+    # Check if environment.yml exists
+    if [ ! -f "environment.yml" ]; then
+        echo "[ERROR] environment.yml not found"
+        echo "Please ensure environment.yml is in the project directory"
+        exit 1
+    fi
+    
+    echo "[SETUP] Installing packages with conda..."
+    echo "Progress: This includes TA-Lib and all ML libraries"
+    echo ""
+    
+    conda env create -f environment.yml
     if [ $? -ne 0 ]; then
-        echo "[ERROR] Failed to create virtual environment"
         echo ""
-        echo "Troubleshooting:"
-        echo "1. Ensure python3-venv is installed: sudo apt-get install python3-venv"
-        echo "2. Check write permissions in this directory"
-        echo "3. Ensure you have enough disk space"
-        echo ""
-        exit 1
-    fi
-    echo "[OK] Virtual environment created successfully"
-    echo ""
-else
-    echo "[OK] Virtual environment already exists"
-fi
-
-# Activate virtual environment
-echo "[SETUP] Activating virtual environment..."
-set +e  # Don't exit on error for this check
-source venv/bin/activate
-if [ $? -ne 0 ]; then
-    echo "[ERROR] Failed to activate virtual environment"
-    echo ""
-    echo "The venv folder may be corrupted. Solutions:"
-    echo "1. Delete the 'venv' folder: rm -rf venv"
-    echo "2. Run this script again"
-    echo "3. Check folder permissions"
-    echo ""
-    exit 1
-fi
-set -e  # Re-enable exit on error
-
-echo "[OK] Virtual environment activated"
-echo "Using: $VIRTUAL_ENV"
-echo ""
-
-# Check if dependencies are installed
-echo "[SETUP] Checking dependencies..."
-set +e  # Don't exit on error for this check
-python -c "import streamlit" &> /dev/null
-STREAMLIT_INSTALLED=$?
-set -e
-
-if [ $STREAMLIT_INSTALLED -ne 0 ]; then
-    echo "[SETUP] Installing dependencies - this may take 5-10 minutes..."
-    echo "Please be patient, do not close this terminal."
-    echo ""
-    
-    # Upgrade pip first for better stability
-    echo "[SETUP] Upgrading pip to latest version..."
-    python -m pip install --upgrade pip > /dev/null 2>&1
-    
-    # Check if TA-Lib is installed
-    set +e  # Don't exit on error for this check
-    python -c "import talib" &> /dev/null
-    TALIB_INSTALLED=$?
-    set -e
-    
-    if [ $TALIB_INSTALLED -ne 0 ]; then
-        echo ""
-        echo "========================================"
-        echo "WARNING: TA-Lib not detected"
-        echo "========================================"
-        echo "TA-Lib must be installed manually before proceeding."
-        echo ""
-        echo "On macOS:"
-        echo "  brew install ta-lib"
-        echo "  pip install TA-Lib"
-        echo ""
-        echo "On Ubuntu/Debian:"
-        echo "  sudo apt-get install build-essential wget"
-        echo "  wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz"
-        echo "  tar -xzf ta-lib-0.4.0-src.tar.gz"
-        echo "  cd ta-lib/"
-        echo "  ./configure --prefix=/usr"
-        echo "  make"
-        echo "  sudo make install"
-        echo "  pip install TA-Lib"
-        echo ""
-        echo "After installation, run this script again."
-        echo ""
-        exit 1
-    fi
-    
-    echo "[OK] TA-Lib detected"
-    echo ""
-    echo "[SETUP] Installing remaining Python packages..."
-    echo "Progress: Installing scientific computing packages..."
-    
-    set +e  # Don't exit on error, we'll handle it
-    pip install -r requirements.txt --no-cache-dir
-    PIP_EXIT_CODE=$?
-    set -e
-    
-    if [ $PIP_EXIT_CODE -ne 0 ]; then
-        echo "[ERROR] Failed to install dependencies"
+        echo "[ERROR] Failed to create conda environment"
         echo ""
         echo "Troubleshooting:"
         echo "1. Check your internet connection"
-        echo "2. Try running: pip install -r requirements.txt"
-        echo "3. Check the error messages above"
-        echo "4. On Linux, you may need to install: sudo apt-get install python3-dev build-essential"
+        echo "2. Try: conda clean --all"
+        echo "3. Try: conda update conda"
+        echo "4. Check the error messages above"
         echo ""
         exit 1
     fi
-    echo "[OK] All dependencies installed successfully"
-else
-    echo "[OK] Dependencies already installed"
-    echo "[INFO] To update dependencies, delete the venv folder and run this script again"
-fi
-
-echo ""
-
-# Check if .env file exists
-if [ ! -f ".env" ]; then
-    echo "[WARNING] .env file not found"
+    
     echo ""
-    if [ -f ".env.example" ]; then
-        echo "[SETUP] Creating .env from .env.example..."
-        cp .env.example .env
-        echo "[OK] .env file created"
-        echo ""
-        echo "========================================"
-        echo "ACTION REQUIRED"
-        echo "========================================"
-        echo "Please edit .env file with your MT5 credentials:"
-        echo "  - MT5_LOGIN"
-        echo "  - MT5_PASSWORD"
-        echo "  - MT5_SERVER"
-        echo ""
-        echo "After editing, run this script again."
-        echo ""
-        
-        # Try to open in default editor
-        if command -v nano &> /dev/null; then
-            read -p "Press Enter to edit .env file (or Ctrl+C to exit)..."
-            nano .env
-        fi
-        exit 0
-    else
-        echo "[ERROR] .env.example not found"
+    echo "[OK] Conda environment created successfully"
+    echo ""
+else
+    echo "[OK] Conda environment 'mt5-sentiment-bot' already exists"
+    echo "[INFO] To update environment: conda env update -f environment.yml"
+fi
+
+echo ""
+echo "[SETUP] Activating conda environment..."
+
+# Activate the conda environment
+conda activate mt5-sentiment-bot
+if [ $? -ne 0 ]; then
+    echo "[ERROR] Failed to activate conda environment"
+    echo ""
+    echo "Try these solutions:"
+    echo "1. Restart your terminal"
+    echo "2. Run: conda init bash (or conda init zsh for macOS)"
+    echo "3. Delete and recreate: conda env remove -n mt5-sentiment-bot"
+    echo ""
+    exit 1
+fi
+
+echo "[OK] Conda environment activated"
+echo "Environment: mt5-sentiment-bot"
+echo ""
+
+# Verify key packages are installed
+echo "[SETUP] Verifying installation..."
+python -c "import streamlit" &> /dev/null
+if [ $? -ne 0 ]; then
+    echo "[WARNING] Streamlit not found, attempting to install missing packages..."
+    conda env update -f environment.yml
+fi
+
+python -c "import talib" &> /dev/null
+if [ $? -ne 0 ]; then
+    echo "[WARNING] TA-Lib not properly installed"
+    echo "Attempting to install from conda-forge..."
+    conda install -c conda-forge ta-lib -y
+    if [ $? -ne 0 ]; then
+        echo "[ERROR] TA-Lib installation failed"
+        echo "Try manually: conda install -c conda-forge ta-lib"
         exit 1
     fi
 fi
 
-echo "[OK] Configuration file found"
+echo "[OK] All packages verified"
 echo ""
 
-# Create necessary directories if they don't exist
+# Create necessary directories
 echo "[SETUP] Checking directory structure..."
 mkdir -p data logs models reports
 echo "[OK] Directory structure ready"
+echo ""
 
 # Check if database needs initialization
 if [ ! -f "data/mt5_sentiment.db" ]; then
     echo "[SETUP] Initializing database..."
-    set +e  # Don't exit on error for this check
     python -c "from src.database.models import init_database; init_database(); print('[OK] Database initialized')" 2>/dev/null
-    DB_INIT_CODE=$?
-    set -e
-    
-    if [ $DB_INIT_CODE -ne 0 ]; then
+    if [ $? -ne 0 ]; then
         echo "[WARNING] Database initialization failed - will retry on first run"
-        echo "This is normal if dependencies were just installed"
+        echo "This is normal for first-time setup"
     else
         echo "[OK] Database initialized successfully"
     fi
@@ -224,18 +159,16 @@ echo "========================================"
 echo "Starting MT5 Sentiment Analysis Bot..."
 echo "========================================"
 echo ""
-echo "[INFO] Starting Python-based Streamlit application"
+echo "[INFO] Using Anaconda environment: mt5-sentiment-bot"
 echo "[INFO] Dashboard will open in your browser automatically"
 echo "[INFO] Press Ctrl+C to stop the bot"
 echo ""
-echo "Launching..."
+echo "Launching Streamlit..."
 echo ""
 
-# Start Streamlit with the app and better error handling
-set +e  # Don't exit on error, capture exit code
+# Start Streamlit with the app
 streamlit run app.py --server.headless=true --server.port=8501
 STREAMLIT_EXIT_CODE=$?
-set -e
 
 # If Streamlit exits, show message
 echo ""
@@ -252,4 +185,5 @@ fi
 
 echo ""
 echo "To restart the bot, run this script again: ./start_bot.sh"
+echo "To deactivate conda: conda deactivate"
 echo ""
