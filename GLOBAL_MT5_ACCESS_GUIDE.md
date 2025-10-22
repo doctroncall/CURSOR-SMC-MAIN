@@ -1,5 +1,7 @@
 # 🌐 Global MT5 Access Guide
 
+> NOTE: The legacy `mt5_connector.py` has been removed. The application now uses `src/mt5/connection.py` (`MT5Connection`) everywhere. Replace any references to `mt5_connector` with `get_mt5_connection()` and pass the connection to components that need it.
+
 ## How MT5 Connection Works in This App
 
 ### Overview

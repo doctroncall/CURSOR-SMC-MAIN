@@ -1,5 +1,9 @@
 # ✅ Global MT5 Access Verification
 
+> NOTE: This document contains references to the legacy `mt5_connector.py`.
+> The codebase now uses `src/mt5/connection.py` (`MT5Connection`) exclusively.
+> Replace any `mt5_connector` usage with `get_mt5_connection()`/`MT5Connection`.
+
 ## Confirmation: Full App Access Enabled
 
 This document confirms that the unified `src/mt5/connection.py` (`MT5Connection`) provides complete MT5 access across the application.
