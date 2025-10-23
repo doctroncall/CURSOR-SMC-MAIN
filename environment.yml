@@ -31,7 +31,6 @@ dependencies:
   - plotly>=5.17.0
   - matplotlib>=3.8.0
   - seaborn>=0.13.0
-  - kaleido>=0.2.1
   
   # Database
   - sqlalchemy>=2.0.0
@@ -68,3 +67,5 @@ dependencies:
     - pandas-ta>=0.3.14b
     - catboost>=1.2.0
     - PyPDF2>=3.0.0
+    # Visualization helper (conda often lacks windows builds)
+    - kaleido>=0.2.1

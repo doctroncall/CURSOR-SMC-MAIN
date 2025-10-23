@@ -76,6 +76,7 @@ def main():
         ("Plotly", "plotly"),
         ("Matplotlib", "matplotlib"),
         ("Seaborn", "seaborn"),
+        ("Kaleido", "kaleido"),
         
         # Database
         ("SQLAlchemy", "sqlalchemy"),
