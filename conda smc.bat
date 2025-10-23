@@ -201,30 +201,45 @@ echo.
 REM Step 4: Verify and install dependencies
 echo [4/5] Verifying dependencies...
 
-REM Check critical packages
-python -c "import streamlit" >nul 2>&1
-if errorlevel 1 (
-    echo [INFO] Installing missing packages...
-    REM Use the correct environment name for update
-    conda env update -f environment.yml -n %ENV_NAME%
+REM Ensure conda env matches expected name
+echo [INFO] Ensuring environment packages are installed for %ENV_NAME%...
+conda env update -f environment.yml -n %ENV_NAME% --prune >nul 2>&1
+
+REM Check critical packages one-by-one and install fallbacks when needed
+python -c "import streamlit" >nul 2>&1 || (
+    echo [INFO] Installing Streamlit...
+    conda install -n %ENV_NAME% -c conda-forge streamlit -y
 )
 
-python -c "import talib" >nul 2>&1
-if errorlevel 1 (
-    echo [INFO] Installing TA-Lib...
-    conda install -c conda-forge ta-lib -y
+python -c "import talib" >nul 2>&1 || (
+    echo [INFO] Installing TA-Lib via conda-forge...
+    conda install -n %ENV_NAME% -c conda-forge ta-lib -y
 )
 
-python -c "import loguru" >nul 2>&1
-if errorlevel 1 (
-    echo [INFO] Installing loguru...
-    conda install -c conda-forge loguru -y
+python -c "import loguru" >nul 2>&1 || (
+    echo [INFO] Installing loguru via conda-forge...
+    conda install -n %ENV_NAME% -c conda-forge loguru -y
 )
 
-python -c "import MetaTrader5" >nul 2>&1
-if errorlevel 1 (
-    echo [INFO] Installing MetaTrader5...
+python -c "import MetaTrader5" >nul 2>&1 || (
+    echo [INFO] Installing MetaTrader5 via pip...
+    pip install --upgrade pip
     pip install MetaTrader5
+)
+
+python -c "import plotly" >nul 2>&1 || (
+    echo [INFO] Installing plotly via conda-forge...
+    conda install -n %ENV_NAME% -c conda-forge plotly -y
+)
+
+python -c "import kaleido" >nul 2>&1 || (
+    echo [INFO] Installing kaleido via pip (conda often unavailable on Windows)...
+    pip install kaleido
+)
+
+python -c "import pandas_ta" >nul 2>&1 || (
+    echo [INFO] Installing pandas-ta via pip...
+    pip install pandas-ta
 )
 
 echo [OK] All dependencies ready
