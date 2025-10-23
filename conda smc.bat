@@ -215,6 +215,12 @@ if errorlevel 1 (
     conda install -c conda-forge ta-lib -y
 )
 
+python -c "import loguru" >nul 2>&1
+if errorlevel 1 (
+    echo [INFO] Installing loguru...
+    conda install -c conda-forge loguru -y
+)
+
 python -c "import MetaTrader5" >nul 2>&1
 if errorlevel 1 (
     echo [INFO] Installing MetaTrader5...

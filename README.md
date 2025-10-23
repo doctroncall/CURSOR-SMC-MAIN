@@ -241,6 +241,68 @@ Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
 - [ ] Backtesting framework
 - [ ] Economic calendar integration
 
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### "ModuleNotFoundError: No module named 'loguru'"
+
+**Quick Fix:**
+```batch
+fix_loguru.bat
+```
+
+Or manually:
+```batch
+conda activate smc_bot
+conda install -c conda-forge loguru -y
+```
+
+See `LOGURU_FIX_GUIDE.md` for detailed instructions.
+
+#### "ModuleNotFoundError: No module named 'talib'"
+
+```batch
+conda activate smc_bot
+conda install -c conda-forge ta-lib -y
+```
+
+#### "Could not connect to MT5"
+
+1. Ensure MetaTrader 5 is running
+2. Check your credentials in `.env`
+3. Verify your broker allows API connections
+4. See `MT5_CONNECTION_DEBUG.md` for detailed help
+
+#### Environment Not Found
+
+```batch
+# Recreate the environment
+conda env remove -n smc_bot
+conda env create -f environment.yml
+```
+
+### Verify All Dependencies
+
+Run the verification script:
+```batch
+verify_dependencies.bat
+```
+
+Or on Linux/Mac:
+```bash
+python verify_dependencies.py
+```
+
+This will check all required packages and show which ones are missing.
+
+### Getting Help
+
+- Check `TROUBLESHOOTING.md` for detailed solutions
+- Review logs in the `logs/` directory
+- Run `verify_dependencies.bat` to check your setup
+- See individual fix guides (e.g., `LOGURU_FIX_GUIDE.md`)
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please:

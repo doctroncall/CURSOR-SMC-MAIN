@@ -159,6 +159,19 @@ if errorlevel 1 (
     )
 )
 
+python -c "import loguru" >nul 2>&1
+if errorlevel 1 (
+    echo [WARNING] loguru not properly installed
+    echo Attempting to install from conda-forge...
+    conda install -c conda-forge loguru -y
+    if errorlevel 1 (
+        echo [ERROR] loguru installation failed
+        echo Try manually: conda install -c conda-forge loguru
+        pause
+        exit /b 1
+    )
+)
+
 echo [OK] All packages verified
 echo.
 
